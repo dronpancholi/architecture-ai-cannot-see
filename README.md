@@ -168,11 +168,11 @@ Rules are evaluated against the **before** and **after** trees. A finding blocks
 
 ## Measured Evidence
 
-### Controlled benchmark — 16 labelled scenarios
+### Controlled benchmark — 17 labelled scenarios
 
 | Metric | Value |
 |---|---|
-| True positives | 10 |
+| True positives | 11 |
 | False positives | 0 |
 | True negatives | 6 |
 | False negatives | 0 |
@@ -191,8 +191,8 @@ Ground truth is the scenario label, not the verifier's own verdict.
 
 | Metric | Baseline | With loop |
 |---|---|---|
-| Changes that are actually safe | 6/16 (38%) | **16/16 (100%)** |
-| Unsafe changes committed | 10/16 | **0/16** |
+| Changes that are actually safe | 6/17 (35%) | **17/17 (100%)** |
+| Unsafe changes committed | 11/17 | **0/17** |
 | Average verification overhead | 0 ms | ~30 ms |
 
 Full breakdown: [`benchmarks/EVIDENCE.md`](./benchmarks/EVIDENCE.md).
@@ -427,7 +427,7 @@ The whitepaper is explicit that this problem is unsolved. So is this implementat
 - **Structural rules are not full data flow.** A violation hidden behind dynamic dispatch may be reported as uncertain rather than proven.
 - **Behavioural rules execute code.** They run in a temp dir with a timeout, but they are not a security sandbox. Run them on trusted code.
 - **Rules must be declared.** The engine cannot invent an invariant that was never written anywhere. That is the tacit-knowledge problem.
-- **The benchmark is controlled.** The 16 fixtures are designed to isolate specific rules. The external benchmark adds real-world signal, but four scenarios on one repository is not a proof of general superiority.
+- **The benchmark is controlled.** The 17 scenarios are designed to isolate specific rules. The external benchmark adds real-world signal, but ten scenarios over two repositories is not a proof of general superiority.
 - **The agent experiment uses a deterministic repair.** It proves the loop gates and converges; it does not prove an arbitrary LLM will repair well.
 - **Python only.** The AST extractors target Python; other languages need new extractors.
 

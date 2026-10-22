@@ -4,111 +4,118 @@
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 17.17
+    "verification_ms": 19.15
   },
   {
     "scenario": "layer-safe-rename",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 7.84
+    "verification_ms": 10.33
   },
   {
     "scenario": "layer-violation-auth-order",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 19.08
+    "verification_ms": 27.78
   },
   {
     "scenario": "layer-safe-add-method",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 9.71
+    "verification_ms": 6.14
+  },
+  {
+    "scenario": "layer-orphaned-calls",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 13.29
   },
   {
     "scenario": "layer-preexisting-debt",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 7.69
+    "verification_ms": 6.2
   },
   {
     "scenario": "auth-missing-authorize-delete",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 10.08
+    "verification_ms": 8.05
   },
   {
     "scenario": "auth-missing-authorize-transfer",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 11.78
+    "verification_ms": 7.55
   },
   {
     "scenario": "auth-safe-logging",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 7.5
+    "verification_ms": 3.99
   },
   {
     "scenario": "auth-mutable-default",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 18.07
+    "verification_ms": 7.92
   },
   {
     "scenario": "auth-missing-annotation",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 15.24
+    "verification_ms": 7.61
   },
   {
     "scenario": "pricing-float-regression",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 177.73
+    "verification_ms": 129.77
   },
   {
     "scenario": "pricing-negative-total",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 194.46
+    "verification_ms": 127.65
   },
   {
     "scenario": "pricing-safe-refactor",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 92.42
+    "verification_ms": 61.92
   },
   {
     "scenario": "plugin-registry-importlib",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 8.34
+    "verification_ms": 5.64
   },
   {
     "scenario": "plugin-registry-eval",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 15.68
+    "verification_ms": 5.31
   },
   {
     "scenario": "plugin-safe-logging",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 3.8
+    "verification_ms": 2.64
   }
 ]

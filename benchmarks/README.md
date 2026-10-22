@@ -31,9 +31,9 @@ The label is the ground truth. The verifier never grades itself.
 
 | Benchmark | Target | Scenarios |
 |---|---|---|
-| `runner.py` | 4 realistic multi-module fixtures | 16 |
+| `runner.py` | 4 realistic multi-module fixtures | 17 |
 | `external.py` | `pallets/itsdangerous`, `psf/requests` (pinned) | 10 |
-| `agent_experiment.py` | same 16 fixtures, baseline vs loop | 16 |
+| `agent_experiment.py` | same 17 scenarios, baseline vs loop | 17 |
 
 ## Honest limits
 

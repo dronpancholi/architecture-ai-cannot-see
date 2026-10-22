@@ -1,7 +1,7 @@
 {
   "aggregate": {
-    "scenarios": 16,
-    "tp": 10,
+    "scenarios": 17,
+    "tp": 11,
     "fp": 0,
     "tn": 6,
     "fn": 0,
@@ -67,6 +67,26 @@
       "predicted_blocked": false,
       "summary": "APPROVED (2 rules, 0 pre-existing)",
       "findings": []
+    },
+    {
+      "scenario": "layer-orphaned-calls",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "no-orphaned-calls",
+          "path": "app/services/orders.py",
+          "line": 12,
+          "message": "place still calls deleted function insert",
+          "evidence": "app/services/orders.py:12 calls self.repo.insert",
+          "suggestion": "Update app/services/orders.py:12 or keep insert.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
     },
     {
       "scenario": "layer-preexisting-debt",
@@ -187,7 +207,7 @@
           "path": "",
           "line": 0,
           "message": "behavioral violation: TypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
-          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
           "suggestion": "Restore the behavior the invariant requires.",
           "severity": "error",
           "introduced": true,
@@ -207,7 +227,7 @@
           "path": "",
           "line": 0,
           "message": "behavioral violation: AssertionError: negative total: -10",
-          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-3tcllhvp/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-3tcllhvp/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-oan7nwmu/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-oan7nwmu/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
           "suggestion": "Restore the behavior the invariant requires.",
           "severity": "error",
           "introduced": true,

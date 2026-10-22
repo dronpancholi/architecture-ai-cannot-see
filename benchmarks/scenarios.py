@@ -17,6 +17,7 @@ from knowledge_surface.verification.rules import (
     ForbiddenCallRule,
     ForbiddenImportRule,
     NoMutableDefaultRule,
+    NoOrphanedCallsRule,
     RequireCallRule,
     Rule,
     TypeAnnotationRule,
@@ -161,6 +162,15 @@ def scenarios() -> list[Scenario]:
             r, "app/services/orders.py",
             "    def authorize(self, customer_id: str) -> None:",
             "    def describe(self, customer_id: str) -> str:\n        return f'customer:{customer_id}'\n\n    def authorize(self, customer_id: str) -> None:",
+        ),
+    ))
+    out.append(Scenario(
+        "layer-orphaned-calls", "layered_webapp", "introduced-violation", True,
+        layered_rules() + [NoOrphanedCallsRule()],
+        lambda r: _modify(
+            r, "app/repo/orders.py",
+            "    def insert(self, customer_id: str, amount: int) -> dict:\n        row = {\"id\": f\"o-{customer_id}\", \"amount\": amount}\n        self.db.rows.append(row)\n        return row",
+            "    pass",
         ),
     ))
     out.append(Scenario(

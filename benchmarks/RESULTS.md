@@ -7,8 +7,8 @@ a scenario labelled *allow* is a safe refactor or pre-existing debt.
 
 | Metric | Value |
 |---|---|
-| Scenarios | 16 |
-| True positives | 10 |
+| Scenarios | 17 |
+| True positives | 11 |
 | False positives | 0 |
 | True negatives | 6 |
 | False negatives | 0 |
@@ -26,6 +26,7 @@ a scenario labelled *allow* is a safe refactor or pre-existing debt.
 | `layer-safe-rename` | safe-refactor | allow | allow | ✅ |
 | `layer-violation-auth-order` | introduced-violation | block | block | ✅ |
 | `layer-safe-add-method` | safe-refactor | allow | allow | ✅ |
+| `layer-orphaned-calls` | introduced-violation | block | block | ✅ |
 | `layer-preexisting-debt` | preexisting-debt | allow | allow | ✅ |
 | `auth-missing-authorize-delete` | introduced-violation | block | block | ✅ |
 | `auth-missing-authorize-transfer` | introduced-violation | block | block | ✅ |

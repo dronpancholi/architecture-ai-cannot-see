@@ -221,6 +221,38 @@ class ForbiddenCallRule(Rule):
         return RuleResult(rule_id=self.id, passed=True, message="ok")
 
 
+class NoOrphanedCallsRule(Rule):
+    """Deleting a function is unsafe while another module still calls it.
+
+    This is a cross-file effect: the call site can live in a file the change
+    never touched, which is exactly what file-local reasoning misses.
+    """
+
+    def __init__(self, id: str = "no-orphaned-calls"):
+        self.id = id
+        self.description = "deleted functions must not leave call sites behind"
+
+    def evaluate(self, ctx: RuleContext) -> RuleResult:
+        before_funcs = {(p, fn.name) for p, t in ctx.before_asts().items() for fn in _funcs(t)}
+        after_funcs = {(p, fn.name) for p, t in ctx.after_asts().items() for fn in _funcs(t)}
+        deleted = {name for (p, name) in before_funcs if (p, name) not in after_funcs and name != "__init__"}
+        if not deleted:
+            return RuleResult(rule_id=self.id, passed=True, message="no deleted functions")
+        for path, tree in ctx.after_asts().items():
+            for fn in _funcs(tree):
+                for name, line in _calls_in(fn):
+                    leaf = name.split(".")[-1]
+                    if leaf in deleted:
+                        return RuleResult(
+                            rule_id=self.id, passed=False,
+                            message=f"{fn.name} still calls deleted function {leaf}",
+                            path=path, line=line,
+                            evidence=f"{path}:{line} calls {name}",
+                            suggestion=f"Update {path}:{line} or keep {leaf}.",
+                        )
+        return RuleResult(rule_id=self.id, passed=True, message="no orphaned callers")
+
+
 class TypeAnnotationRule(Rule):
     """Public functions must be fully annotated (structural invariant)."""
 
