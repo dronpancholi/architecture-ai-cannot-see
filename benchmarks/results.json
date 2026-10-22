@@ -5,6 +5,8 @@
     "fp": 0,
     "tn": 6,
     "fn": 0,
+    "unknown": 0,
+    "incomplete": 0,
     "precision": 1.0,
     "recall": 1.0,
     "f1": 1.0,
@@ -27,18 +29,27 @@
           "evidence": "app/routes/orders.py:3 imports app.db.Database; app/routes/orders.py:3 imports app.db",
           "suggestion": "Remove the forbidden import or route through an allowed boundary.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "layer-safe-rename",
       "category": "safe-refactor",
       "expected_blocked": false,
       "predicted_blocked": false,
-      "summary": "APPROVED (2 rules, 0 pre-existing)",
-      "findings": []
+      "summary": "APPROVED (2 rules)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "layer-violation-auth-order",
@@ -51,22 +62,31 @@
           "rule_id": "service-authorize-first",
           "path": "app/services/orders.py",
           "line": 10,
-          "message": "order service must authorize before inserting",
-          "evidence": "app/services/orders.py:10 authorize called after insert",
+          "message": "app/services/orders.py:10 authorize does not dominate insert",
+          "evidence": "app/services/orders.py:10 authorize does not dominate insert",
           "suggestion": "Call authorize before the protected operation.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "layer-safe-add-method",
       "category": "safe-refactor",
       "expected_blocked": false,
       "predicted_blocked": false,
-      "summary": "APPROVED (2 rules, 0 pre-existing)",
-      "findings": []
+      "summary": "APPROVED (2 rules)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "layer-orphaned-calls",
@@ -83,10 +103,17 @@
           "evidence": "app/services/orders.py:12 calls self.repo.insert",
           "suggestion": "Update app/services/orders.py:12 or keep insert.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "layer-preexisting-debt",
@@ -94,7 +121,9 @@
       "expected_blocked": false,
       "predicted_blocked": false,
       "summary": "APPROVED (2 rules, 1 pre-existing)",
-      "findings": []
+      "findings": [],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "auth-missing-authorize-delete",
@@ -107,14 +136,21 @@
           "rule_id": "delete-authorize",
           "path": "auth/service.py",
           "line": 10,
-          "message": "delete_account must authorize before deleting",
+          "message": "auth/service.py:10 delete_account does not call authorize",
           "evidence": "auth/service.py:10 delete_account does not call authorize",
           "suggestion": "Call authorize before the protected operation.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "auth-missing-authorize-transfer",
@@ -127,22 +163,31 @@
           "rule_id": "transfer-authorize",
           "path": "auth/service.py",
           "line": 14,
-          "message": "transfer must authorize before moving funds",
+          "message": "auth/service.py:14 transfer does not call authorize",
           "evidence": "auth/service.py:14 transfer does not call authorize",
           "suggestion": "Call authorize before the protected operation.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "auth-safe-logging",
       "category": "safe-refactor",
       "expected_blocked": false,
       "predicted_blocked": false,
-      "summary": "APPROVED (4 rules, 0 pre-existing)",
-      "findings": []
+      "summary": "APPROVED (4 rules)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "auth-mutable-default",
@@ -159,10 +204,17 @@
           "evidence": "auth/service.py:18 log mutable default",
           "suggestion": "Use None as the default and create the container inside the function.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "auth-missing-annotation",
@@ -179,10 +231,17 @@
           "evidence": "auth/service.py:18 ping missing annotations",
           "suggestion": "Add parameter and return type annotations.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "pricing-float-regression",
@@ -192,28 +251,40 @@
       "summary": "BLOCKED: 2 introduced violation(s)",
       "findings": [
         {
+          "rule_id": "non-negative-total",
+          "path": "",
+          "line": 0,
+          "message": "behavioural violation: TypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
+          "suggestion": "",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        },
+        {
           "rule_id": "no-float",
           "path": "pricing/engine.py",
           "line": 9,
           "message": "line_total calls forbidden float",
-          "evidence": "pricing/engine.py:9",
+          "evidence": "pricing/engine.py:9 calls float",
           "suggestion": "Remove the call to float.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
-        },
-        {
-          "rule_id": "non-negative-total",
-          "path": "",
-          "line": 0,
-          "message": "behavioral violation: TypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
-          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-hi5w3fc2/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
-          "suggestion": "Restore the behavior the invariant requires.",
-          "severity": "error",
-          "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "pricing-negative-total",
@@ -226,22 +297,31 @@
           "rule_id": "non-negative-total",
           "path": "",
           "line": 0,
-          "message": "behavioral violation: AssertionError: negative total: -10",
-          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-oan7nwmu/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-oan7nwmu/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
-          "suggestion": "Restore the behavior the invariant requires.",
+          "message": "behavioural violation: AssertionError: negative total: -10",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-bts8rutu/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-bts8rutu/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
+          "suggestion": "",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "pricing-safe-refactor",
       "category": "safe-refactor",
       "expected_blocked": false,
       "predicted_blocked": false,
-      "summary": "APPROVED (2 rules, 0 pre-existing)",
-      "findings": []
+      "summary": "APPROVED (2 rules)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "plugin-registry-importlib",
@@ -258,10 +338,17 @@
           "evidence": "host/registry.py:3 imports importlib",
           "suggestion": "Remove the forbidden import or route through an allowed boundary.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "plugin-registry-eval",
@@ -275,21 +362,30 @@
           "path": "host/registry.py",
           "line": 12,
           "message": "unsafe calls forbidden eval",
-          "evidence": "host/registry.py:12",
+          "evidence": "host/registry.py:12 calls eval",
           "suggestion": "Remove the call to eval.",
           "severity": "error",
+          "status": "introduced",
           "introduced": true,
-          "confidence": "known"
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
         }
-      ]
+      ],
+      "unknown": 0,
+      "complete": true
     },
     {
       "scenario": "plugin-safe-logging",
       "category": "safe-refactor",
       "expected_blocked": false,
       "predicted_blocked": false,
-      "summary": "APPROVED (3 rules, 0 pre-existing)",
-      "findings": []
+      "summary": "APPROVED (3 rules)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
     }
   ]
 }

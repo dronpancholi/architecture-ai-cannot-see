@@ -107,13 +107,16 @@ def check():
     t = total([(Money(Decimal("10")), 1)], discount=Decimal("20"))
     assert t.amount >= 0, f"negative total: {t.amount}"
 """
-    report = SemanticVerifier([BehavioralRule("nonneg", snippet)]).verify(
+    report = SemanticVerifier([BehavioralRule("nonneg", snippet, trusted=True)]).verify(
         root, ChangeSet(files=[FileChange(path="pricing/engine.py", before=before, after=after)]))
     assert not report.approved
     assert "negative" in report.findings[0].message.lower()
 
 
-def test_patch_parsing():
+def test_patch_parsing(tmp_path):
+    root = tmp_path / "repo"
+    (root / "app").mkdir(parents=True)
+    (root / "app/x.py").write_text("import os\nx = 1\n")
     patch = """diff --git a/app/x.py b/app/x.py
 --- a/app/x.py
 +++ b/app/x.py
@@ -122,7 +125,7 @@ def test_patch_parsing():
 -x = 1
 +x = 2
 """
-    cs = CS.from_patch(patch)
+    cs = CS.from_patch(patch, root=root)
     assert len(cs.files) == 1
     assert cs.files[0].path == "app/x.py"
-    assert "x = 2" in (cs.files[0].after or "")
+    assert cs.files[0].after == "import os\nx = 2\n"

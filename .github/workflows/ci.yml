@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" build
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Tests with coverage
+        run: |
+          python -m pytest --cov=knowledge_surface --cov-report=term-missing \
+            --cov-fail-under=85
+
+      - name: Controlled benchmark gate
+        run: |
+          python benchmarks/runner.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          agg = json.loads(Path("benchmarks/results.json").read_text())["aggregate"]
+          assert agg["precision"] >= 0.9, agg
+          assert agg["recall"] >= 0.9, agg
+          assert agg["false_positive_rate"] <= 0.1, agg
+          assert agg["unknown"] == 0, agg
+          assert agg["incomplete"] == 0, agg
+          print("benchmark gate passed:", agg)
+          PY
+
+      - name: Performance baseline
+        run: python benchmarks/perf.py --iterations 3
+
+      - name: Build and install wheel
+        run: |
+          python -m build
+          python -m pip install --force-reinstall --no-deps dist/*.whl
+          ks --help
+          python -c "import knowledge_surface; print(knowledge_surface.__version__)"

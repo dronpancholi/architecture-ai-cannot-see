@@ -2,35 +2,95 @@
 
 from __future__ import annotations
 
-from .engine import VerificationReport
+from .engine import Finding, VerificationReport
+
+
+def _item(f: Finding, blocking: bool) -> dict:
+    return {
+        "rule": f.rule_id,
+        "file": f.path,
+        "line": f.line,
+        "problem": f.message,
+        "evidence": f.evidence,
+        "fix": f.suggestion,
+        "status": f.status,
+        "before": f.before,
+        "after": f.after,
+        "blocking": blocking,
+        "suppressed": f.suppressed,
+        "suppression_reason": f.suppression_reason,
+    }
 
 
 def feedback_items(report: VerificationReport) -> list[dict]:
-    return [
-        {
-            "rule": f.rule_id,
-            "file": f.path,
-            "line": f.line,
-            "problem": f.message,
-            "evidence": f.evidence,
-            "fix": f.suggestion,
-            "blocking": f.introduced and f.severity == "error",
-        }
+    items = [
+        _item(f, True)
         for f in report.findings
+        if f.severity == "error"
     ]
+    items.extend(_item(f, report.unknown_policy == "block") for f in report.unknown)
+    for error in report.parse_errors:
+        items.append({
+            "rule": "parse-error",
+            "file": error["path"],
+            "line": 0,
+            "problem": error["error"],
+            "evidence": error["error"],
+            "fix": "Fix the syntax error or remove the file from the change.",
+            "status": "unknown" if error["introduced"] else "preexisting",
+            "before": "",
+            "after": error["error"],
+            "blocking": error["introduced"],
+            "suppressed": False,
+            "suppression_reason": "",
+        })
+    return items
 
 
 def to_markdown(report: VerificationReport) -> str:
     if report.approved:
         return f"## Verification: APPROVED\n\n{report.summary()}\n"
-    lines = ["## Verification: BLOCKED\n", report.summary(), ""]
-    for f in report.findings:
-        lines.append(f"### {f.rule_id} — `{f.path}:{f.line}`")
-        lines.append(f"- **Problem:** {f.message}")
-        if f.evidence:
-            lines.append(f"- **Evidence:** `{f.evidence}`")
-        lines.append(f"- **Fix:** {f.suggestion}")
+    lines = [
+        "## Verification: INDETERMINATE" if report.indeterminate
+        else "## Verification: BLOCKED",
+        "",
+        report.summary(),
+        "",
+    ]
+    sections = [
+        ("Introduced violations", report.findings),
+        ("Indeterminate results", report.unknown),
+        ("Pre-existing findings (not caused by this change)", report.preexisting),
+        ("Improvements", report.improvements),
+        ("Suppressed findings", report.suppressed),
+    ]
+    for title, findings in sections:
+        if not findings:
+            continue
+        lines.append(f"### {title}")
         lines.append("")
-    if report.preexisting:
-        lines.append(f"_{len(report.preexisting)} pre-existing issue(s) not caused by this change._")
+        for f in findings:
+            lines.append(f"#### `{f.rule_id}` — `{f.path}:{f.line}`")
+            lines.append(f"- **Problem:** {f.message}")
+            if f.evidence:
+                lines.append(f"- **Evidence:** `{f.evidence}`")
+            if f.before or f.after:
+                lines.append(f"- **Before/after:** `{f.before or '?'}` → `{f.after or '?'}`")
+            if f.suppression_reason:
+                lines.append(f"- **Suppression:** {f.suppression_reason}")
+            lines.append(f"- **Fix:** {f.suggestion}")
+            lines.append("")
+    if report.parse_errors:
+        lines.append("### Parse errors")
+        lines.append("")
+        for error in report.parse_errors:
+            scope = "introduced" if error["introduced"] else "pre-existing"
+            lines.append(f"- `{error['path']}` ({scope}): {error['error']}")
+        lines.append("")
+    if not report.complete:
+        lines.append(
+            "_Verification is incomplete: not every file could be parsed or "
+            "represented. Treat the result as indeterminate._"
+        )
+        lines.append("")
     return "\n".join(lines)

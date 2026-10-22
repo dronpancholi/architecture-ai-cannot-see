@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from ..paths import iter_python_files
 from .entities import Confidence, Invariant, Provenance
 from .knowledge_surface import KnowledgeSurface
 
@@ -60,13 +61,10 @@ class HeuristicInvariantExtractor:
 
     def extract(self, ks: KnowledgeSurface) -> list[Invariant]:
         found: list[Invariant] = []
-        for f in self.root.rglob("*.py"):
-            rel = str(f.relative_to(self.root))
-            if "__pycache__" in rel:
-                continue
+        for rel, f in iter_python_files(self.root):
             try:
-                text = f.read_text()
-            except OSError:
+                text = f.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
                 continue
             for i, line in enumerate(text.splitlines(), 1):
                 m = _INVARIANT_RE.search(line)

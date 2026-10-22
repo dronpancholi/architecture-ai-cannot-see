@@ -17,6 +17,8 @@ a scenario labelled *allow* is a safe refactor or pre-existing debt.
 | F1 | 100.00% |
 | Accuracy | 100.00% |
 | False-positive rate | 0.00% |
+| Unknown results | 0 |
+| Incomplete scenarios | 0 |
 
 ## Per scenario
 

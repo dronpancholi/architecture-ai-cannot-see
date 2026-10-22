@@ -4,118 +4,118 @@
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 19.15
+    "verification_ms": 21.8
   },
   {
     "scenario": "layer-safe-rename",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 10.33
+    "verification_ms": 9.76
   },
   {
     "scenario": "layer-violation-auth-order",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 27.78
+    "verification_ms": 21.18
   },
   {
     "scenario": "layer-safe-add-method",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 6.14
+    "verification_ms": 11.2
   },
   {
     "scenario": "layer-orphaned-calls",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 13.29
+    "verification_ms": 26.42
   },
   {
     "scenario": "layer-preexisting-debt",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 6.2
+    "verification_ms": 12.08
   },
   {
     "scenario": "auth-missing-authorize-delete",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 8.05
+    "verification_ms": 14.32
   },
   {
     "scenario": "auth-missing-authorize-transfer",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 7.55
+    "verification_ms": 14.63
   },
   {
     "scenario": "auth-safe-logging",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 3.99
+    "verification_ms": 7.44
   },
   {
     "scenario": "auth-mutable-default",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 7.92
+    "verification_ms": 14.0
   },
   {
     "scenario": "auth-missing-annotation",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 7.61
+    "verification_ms": 15.83
   },
   {
     "scenario": "pricing-float-regression",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 129.77
+    "verification_ms": 325.92
   },
   {
     "scenario": "pricing-negative-total",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 127.65
+    "verification_ms": 337.35
   },
   {
     "scenario": "pricing-safe-refactor",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 61.92
+    "verification_ms": 165.82
   },
   {
     "scenario": "plugin-registry-importlib",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 5.64
+    "verification_ms": 12.13
   },
   {
     "scenario": "plugin-registry-eval",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 5.31
+    "verification_ms": 12.19
   },
   {
     "scenario": "plugin-safe-logging",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 2.64
+    "verification_ms": 5.52
   }
 ]

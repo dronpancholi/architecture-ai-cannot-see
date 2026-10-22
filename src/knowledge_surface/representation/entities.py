@@ -8,7 +8,7 @@ honest uncertainty (confidence is a first-class value).
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import StrEnum as Enum
 from typing import Any
 
@@ -54,11 +54,15 @@ class Location(BaseModel):
 
 
 class Provenance(BaseModel):
-    """Why does this entity exist? What decision created it?"""
+    """Why does this entity exist? What decision created it?
+
+    ``timestamp`` is optional so repeated extraction from the same source is
+    byte-for-byte deterministic. Callers that know the time can set it.
+    """
 
     created_by: str = "unknown"          # author / session / tool
     rationale: str = ""
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime | None = None    # optional: keeps serialization deterministic
     source: str = ""                     # commit, doc, or conversation ref
 
 

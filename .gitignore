@@ -9,3 +9,7 @@ build/
 knowledge-surface.json
 *.json.bak
 .DS_Store
+
+.coverage
+coverage.xml
+htmlcov/

@@ -1,0 +1,39 @@
+{
+  "cold_build_first_run": {
+    "duration_ms": 719.48,
+    "entities": 417,
+    "files": 29,
+    "peak_tracemalloc_mb": 8.84,
+    "relationships": 1013
+  },
+  "extractor_only": {
+    "iterations": 20,
+    "max_ms": 459.21,
+    "median_ms": 105.87,
+    "min_ms": 91.71,
+    "p95_ms": 221.78
+  },
+  "fixture": "benchmarks/fixtures/layered_webapp",
+  "full_build": {
+    "iterations": 20,
+    "max_ms": 555.49,
+    "median_ms": 276.73,
+    "min_ms": 242.96,
+    "p95_ms": 395.33
+  },
+  "host_python": "3.14.6",
+  "sandbox": {
+    "iterations": 20,
+    "max_ms": 86.69,
+    "median_ms": 78.24,
+    "min_ms": 44.22,
+    "p95_ms": 84.98
+  },
+  "verify_safe_change": {
+    "iterations": 20,
+    "max_ms": 25.98,
+    "median_ms": 20.6,
+    "min_ms": 17.41,
+    "p95_ms": 25.82
+  }
+}

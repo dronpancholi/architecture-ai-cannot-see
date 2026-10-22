@@ -101,6 +101,7 @@ def check():
     assert t.amount >= 0, f"negative total: {t.amount}"
 """,
             "totals must never be negative",
+            trusted=True,
         ),
     ]
 

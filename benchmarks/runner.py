@@ -25,6 +25,8 @@ class Result:
     predicted_blocked: bool
     summary: str
     findings: list[dict] = field(default_factory=list)
+    unknown: int = 0
+    complete: bool = True
 
     @property
     def correct(self) -> bool:
@@ -62,6 +64,8 @@ def run_scenario(s: Scenario) -> Result:
             predicted_blocked=not report.approved,
             summary=report.summary(),
             findings=[f.to_dict() for f in report.findings],
+            unknown=len(report.unknown),
+            complete=report.complete,
         )
 
 
@@ -77,6 +81,8 @@ def aggregate(results: list[Result]) -> dict:
     fpr = fp / (fp + tn) if (fp + tn) else 0.0
     return {
         "scenarios": len(results), "tp": tp, "fp": fp, "tn": tn, "fn": fn,
+        "unknown": sum(r.unknown for r in results),
+        "incomplete": sum(not r.complete for r in results),
         "precision": round(precision, 4), "recall": round(recall, 4),
         "f1": round(f1, 4), "accuracy": round(accuracy, 4),
         "false_positive_rate": round(fpr, 4),
@@ -104,6 +110,8 @@ def to_markdown(results: list[Result], agg: dict) -> str:
         f"| F1 | {agg['f1']:.2%} |",
         f"| Accuracy | {agg['accuracy']:.2%} |",
         f"| False-positive rate | {agg['false_positive_rate']:.2%} |",
+        f"| Unknown results | {agg.get('unknown', 0)} |",
+        f"| Incomplete scenarios | {agg.get('incomplete', 0)} |",
         "",
         "## Per scenario",
         "",

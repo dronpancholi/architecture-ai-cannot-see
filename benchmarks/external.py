@@ -4,15 +4,23 @@ Targets two small, real, security-sensitive libraries:
   - pallets/itsdangerous
   - psf/requests
 
-This demonstrates that the engine is not overfit to the toy fixtures.
+The benchmark fetches the exact commit declared by each target, checks it out
+detached, and verifies ``git rev-parse HEAD`` before running any scenario. It
+fails loudly on a wrong revision, a missing anchor, or an indeterminate
+verification result.
 
 Usage:
-    python benchmarks/external.py [--path /path/to/repo] [--keep] [--out FILE]
+    python benchmarks/external.py
+    python benchmarks/external.py --target itsdangerous
+    python benchmarks/external.py --target itsdangerous --path /path/to/checkout
+    python benchmarks/external.py --keep
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
+import json
 import shutil
 import subprocess
 import tempfile
@@ -29,6 +37,10 @@ from knowledge_surface.verification.rules import (
     RequireCallRule,
     Rule,
 )
+
+
+class BenchmarkError(RuntimeError):
+    """The benchmark cannot make a reproducible, gradeable claim."""
 
 
 @dataclass
@@ -130,64 +142,181 @@ def targets() -> list[Target]:
     return [itsdangerous(), requests_target()]
 
 
-def clone(target: Target, dest: Path) -> None:
-    subprocess.run(["git", "clone", "--depth", "1", "-q", target.repo, str(dest)], check=True)
+def _git(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args], check=check, capture_output=True, text=True, timeout=180,
+    )
+
+
+def checkout(target: Target, dest: Path) -> str:
+    """Fetch and check out the declared pin; return the verified HEAD."""
+    dest.mkdir(parents=True, exist_ok=True)
+    try:
+        _git(["init", "-q", str(dest)])
+        _git(["-C", str(dest), "remote", "add", "origin", target.repo])
+        fetched = _git(
+            ["-C", str(dest), "fetch", "--depth", "1", "-q", "origin", target.pin],
+            check=False,
+        )
+        if fetched.returncode != 0:
+            _git(["-C", str(dest), "fetch", "-q", "origin"])
+        _git(["-C", str(dest), "checkout", "-q", "--detach", target.pin])
+        head = _git(["-C", str(dest), "rev-parse", "HEAD"]).stdout.strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        detail = getattr(exc, "stderr", "") or str(exc)
+        raise BenchmarkError(
+            f"{target.name}: cannot check out {target.pin} from {target.repo}: {detail}"
+        ) from exc
+    if head != target.pin:
+        raise BenchmarkError(
+            f"{target.name}: checkout is at {head}, expected pinned {target.pin}"
+        )
+    return head
+
+
+def _verify_checkout(target: Target, root: Path) -> None:
+    if not (root / ".git").exists():
+        raise BenchmarkError(f"{target.name}: --path is not a git checkout: {root}")
+    try:
+        head = _git(["-C", str(root), "rev-parse", "HEAD"]).stdout.strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise BenchmarkError(f"{target.name}: cannot read HEAD in {root}") from exc
+    if head != target.pin:
+        raise BenchmarkError(
+            f"{target.name}: --path HEAD is {head}, expected pinned {target.pin}"
+        )
 
 
 def run_target(target: Target, root: Path) -> list[Result]:
     results: list[Result] = []
     for s in target.scenarios:
         path = root / s.path
-        before = path.read_text()
-        assert s.old in before, f"anchor not found for {s.name}"
+        if not path.is_file():
+            raise BenchmarkError(
+                f"{s.name}: source file not found: {s.path} "
+                f"({target.name} @ {target.pin})"
+            )
+        before = path.read_text(encoding="utf-8")
+        if s.old not in before:
+            raise BenchmarkError(
+                f"{s.name}: anchor not found in {s.path} "
+                f"({target.name} @ {target.pin})"
+            )
         after = before.replace(s.old, s.new, 1)
+        if after == before:
+            raise BenchmarkError(f"{s.name}: scenario made no change")
         changes = ChangeSet(files=[FileChange(path=s.path, before=before, after=after)])
         report = SemanticVerifier(s.rules).verify(root, changes)
+        if report.unknown or not report.complete:
+            raise BenchmarkError(
+                f"{s.name}: indeterminate verification for {target.name} @ {target.pin}: "
+                f"{report.summary()}"
+            )
         results.append(Result(
             scenario=s.name, category=s.category,
             expected_blocked=s.expected_blocked,
             predicted_blocked=not report.approved,
             summary=report.summary(),
             findings=[f.to_dict() for f in report.findings],
+            unknown=len(report.unknown),
+            complete=report.complete,
         ))
     return results
 
 
+def _select(all_targets: list[Target], selector: str | None) -> list[Target]:
+    if selector is None:
+        return all_targets
+    matches = [t for t in all_targets if selector in t.name]
+    if len(matches) != 1:
+        names = ", ".join(t.name for t in all_targets)
+        raise BenchmarkError(
+            f"--target {selector!r} matched {len(matches)} targets; choose one of: {names}"
+        )
+    return matches
+
+
+def _tool_version() -> str:
+    try:
+        return importlib.metadata.version("knowledge-surface")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown (source checkout)"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", type=Path, default=None, help="Use an existing checkout.")
-    parser.add_argument("--keep", action="store_true")
-    parser.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "EXTERNAL.md")
+    parser.add_argument("--path", type=Path, default=None,
+                        help="Use an existing checkout (requires --target).")
+    parser.add_argument("--target", default=None,
+                        help="Run one target by name substring.")
+    parser.add_argument("--keep", action="store_true", help="Keep temporary checkouts.")
+    parser.add_argument("--out", type=Path,
+                        default=Path(__file__).resolve().parent / "EXTERNAL.md")
+    parser.add_argument("--json-out", type=Path,
+                        default=Path(__file__).resolve().parent / "external.json")
     args = parser.parse_args()
 
+    if args.path and not args.target:
+        parser.error("--path requires --target so a checkout is not run against another project")
+
+    selected = _select(targets(), args.target)
     sections: list[str] = []
     all_results: list[Result] = []
-    for target in targets():
-        tmp = None
+    metadata: list[dict] = []
+
+    for target in selected:
+        tmp: str | None = None
         if args.path:
-            root = args.path
+            root = args.path.resolve()
+            _verify_checkout(target, root)
         else:
             tmp = tempfile.mkdtemp(prefix="ks-external-")
             root = Path(tmp) / "repo"
-            clone(target, root)
+            checkout(target, root)
         try:
             results = run_target(target, root)
             all_results.extend(results)
             agg = aggregate(results)
-            md = to_markdown(results, agg)
-            sections.append(md.replace(
+            metadata.append({
+                "target": target.name,
+                "repo": target.repo,
+                "commit": target.pin,
+                "scenarios": len(results),
+                "aggregate": agg,
+            })
+            section = to_markdown(results, agg)
+            section = section.replace(
                 "# Benchmark Results",
-                f"# {target.name} @ {target.pin[:7]}",
-            ))
+                f"# {target.name} @ `{target.pin[:12]}`",
+            )
+            section = section.replace(
+                "## Aggregate",
+                f"- Repository: `{target.repo}`\n"
+                f"- Commit: `{target.pin}`\n\n## Aggregate",
+            )
+            sections.append(section)
         finally:
             if tmp and not args.keep:
                 shutil.rmtree(tmp, ignore_errors=True)
 
-    header = "# External Benchmark — Real Public Repositories\n\n"
-    combined = to_markdown(all_results, aggregate(all_results)).replace("# Benchmark Results", "").lstrip()
-    footer = "\n## Combined\n\n" + combined
+    total = aggregate(all_results)
+    header = (
+        "# External Benchmark — Real Public Repositories\n\n"
+        f"- Tool: `knowledge-surface {_tool_version()}`\n"
+        f"- Targets: {len(selected)}\n"
+        f"- Scenarios: {len(all_results)}\n"
+        "- Every checkout is pinned and HEAD-verified before scenarios run.\n"
+        "- Unknown or incomplete results fail the benchmark instead of counting as a block.\n\n"
+    )
+    footer = "\n## Combined\n\n" + to_markdown(all_results, total).replace("# Benchmark Results", "").lstrip()
     out = header + "\n".join(sections) + footer
-    args.out.write_text(out)
+    args.out.write_text(out, encoding="utf-8")
+    args.json_out.write_text(json.dumps({
+        "tool_version": _tool_version(),
+        "targets": metadata,
+        "combined": total,
+        "results": [r.__dict__ for r in all_results],
+    }, indent=2, sort_keys=True), encoding="utf-8")
     print(out)
 
 

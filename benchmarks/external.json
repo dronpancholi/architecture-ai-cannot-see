@@ -1,0 +1,263 @@
+{
+  "combined": {
+    "accuracy": 1.0,
+    "f1": 1.0,
+    "false_positive_rate": 0.0,
+    "fn": 0,
+    "fp": 0,
+    "incomplete": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "scenarios": 10,
+    "tn": 4,
+    "tp": 6,
+    "unknown": 0
+  },
+  "results": [
+    {
+      "category": "introduced-violation",
+      "complete": true,
+      "expected_blocked": true,
+      "findings": [
+        {
+          "after": "fail",
+          "before": "pass",
+          "confidence": "known",
+          "evidence": "src/itsdangerous/signer.py:24 verify_signature does not call compare_digest",
+          "introduced": true,
+          "line": 24,
+          "message": "src/itsdangerous/signer.py:24 verify_signature does not call compare_digest",
+          "path": "src/itsdangerous/signer.py",
+          "rule_id": "constant-time-compare",
+          "severity": "error",
+          "status": "introduced",
+          "suggestion": "Call compare_digest before the protected operation.",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "predicted_blocked": true,
+      "scenario": "itsdangerous-constant-time",
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "unknown": 0
+    },
+    {
+      "category": "introduced-violation",
+      "complete": true,
+      "expected_blocked": true,
+      "findings": [
+        {
+          "after": "fail",
+          "before": "pass",
+          "confidence": "known",
+          "evidence": "src/itsdangerous/signer.py:6 imports pickle",
+          "introduced": true,
+          "line": 6,
+          "message": "signer must not import pickle",
+          "path": "src/itsdangerous/signer.py",
+          "rule_id": "signer-no-pickle",
+          "severity": "error",
+          "status": "introduced",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "predicted_blocked": true,
+      "scenario": "itsdangerous-signer-pickle",
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "unknown": 0
+    },
+    {
+      "category": "safe-refactor",
+      "complete": true,
+      "expected_blocked": false,
+      "findings": [],
+      "predicted_blocked": false,
+      "scenario": "itsdangerous-safe-docstring",
+      "summary": "APPROVED (1 rules)",
+      "unknown": 0
+    },
+    {
+      "category": "introduced-violation",
+      "complete": true,
+      "expected_blocked": true,
+      "findings": [
+        {
+          "after": "fail",
+          "before": "pass",
+          "confidence": "known",
+          "evidence": "src/itsdangerous/serializer.py:5 imports pickle",
+          "introduced": true,
+          "line": 5,
+          "message": "serializer must not import pickle (unsafe deserialization)",
+          "path": "src/itsdangerous/serializer.py",
+          "rule_id": "no-pickle",
+          "severity": "error",
+          "status": "introduced",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "predicted_blocked": true,
+      "scenario": "itsdangerous-pickle",
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "unknown": 0
+    },
+    {
+      "category": "safe-refactor",
+      "complete": true,
+      "expected_blocked": false,
+      "findings": [],
+      "predicted_blocked": false,
+      "scenario": "itsdangerous-safe-rename",
+      "summary": "APPROVED (0 rules)",
+      "unknown": 0
+    },
+    {
+      "category": "introduced-violation",
+      "complete": true,
+      "expected_blocked": true,
+      "findings": [
+        {
+          "after": "fail",
+          "before": "pass",
+          "confidence": "known",
+          "evidence": "src/requests/auth.py:80 calls eval",
+          "introduced": true,
+          "line": 80,
+          "message": "unsafe calls forbidden eval",
+          "path": "src/requests/auth.py",
+          "rule_id": "auth-no-eval",
+          "severity": "error",
+          "status": "introduced",
+          "suggestion": "Remove the call to eval.",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "predicted_blocked": true,
+      "scenario": "requests-eval",
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "unknown": 0
+    },
+    {
+      "category": "introduced-violation",
+      "complete": true,
+      "expected_blocked": true,
+      "findings": [
+        {
+          "after": "fail",
+          "before": "pass",
+          "confidence": "known",
+          "evidence": "src/requests/sessions.py:12 imports pickle",
+          "introduced": true,
+          "line": 12,
+          "message": "sessions must not import pickle",
+          "path": "src/requests/sessions.py",
+          "rule_id": "requests-no-pickle",
+          "severity": "error",
+          "status": "introduced",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "predicted_blocked": true,
+      "scenario": "requests-pickle",
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "unknown": 0
+    },
+    {
+      "category": "introduced-violation",
+      "complete": true,
+      "expected_blocked": true,
+      "findings": [
+        {
+          "after": "fail",
+          "before": "pass",
+          "confidence": "known",
+          "evidence": "src/requests/sessions.py:11 imports subprocess",
+          "introduced": true,
+          "line": 11,
+          "message": "sessions must not shell out",
+          "path": "src/requests/sessions.py",
+          "rule_id": "requests-no-subprocess",
+          "severity": "error",
+          "status": "introduced",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "predicted_blocked": true,
+      "scenario": "requests-subprocess",
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "unknown": 0
+    },
+    {
+      "category": "safe-refactor",
+      "complete": true,
+      "expected_blocked": false,
+      "findings": [],
+      "predicted_blocked": false,
+      "scenario": "requests-safe-docstring",
+      "summary": "APPROVED (2 rules)",
+      "unknown": 0
+    },
+    {
+      "category": "safe-refactor",
+      "complete": true,
+      "expected_blocked": false,
+      "findings": [],
+      "predicted_blocked": false,
+      "scenario": "requests-safe-rename",
+      "summary": "APPROVED (2 rules)",
+      "unknown": 0
+    }
+  ],
+  "targets": [
+    {
+      "aggregate": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "incomplete": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "scenarios": 5,
+        "tn": 2,
+        "tp": 3,
+        "unknown": 0
+      },
+      "commit": "672971d66a2ef9f85151e53283113f33d642dabd",
+      "repo": "https://github.com/pallets/itsdangerous.git",
+      "scenarios": 5,
+      "target": "pallets/itsdangerous"
+    },
+    {
+      "aggregate": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "incomplete": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "scenarios": 5,
+        "tn": 2,
+        "tp": 3,
+        "unknown": 0
+      },
+      "commit": "611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60",
+      "repo": "https://github.com/psf/requests.git",
+      "scenarios": 5,
+      "target": "psf/requests"
+    }
+  ],
+  "tool_version": "0.3.0"
+}
