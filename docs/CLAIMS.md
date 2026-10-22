@@ -24,7 +24,7 @@ Every public claim should point at code, a test, or a recorded result. "Verified
 | Lint is clean | `ruff check .` | Verified |
 | Extraction is deterministic | serialization omits timestamps/duration; `tests/test_extractors.py::test_build_is_deterministic`, `test_representation.py::test_serialization_is_sorted_and_stable` | Verified |
 | Local performance baseline | `.venv/bin/python benchmarks/perf.py --iterations 5` → `benchmarks/perf.json` (latest: extractor 45.72 ms, full build 158.49 ms, verify 6.59 ms, sandbox 23.53 ms median; cold build 466.38 ms, 9.39 MB peak, 29 files, 424 entities, 1032 relationships on Python 3.14.6, macOS-27.2-arm64, 10 CPUs) | Verified on one host; not a competitive benchmark |
-| CI runs lint, tests, coverage gate, controlled benchmark, wheel smoke test, and `pip-audit` | `.github/workflows/ci.yml`; GitHub Actions run `39797461409` for commit `a42fbd5` | Verified: every step of the 3.11/3.12/3.13 jobs and `dependency audit` passed |
+| CI runs lint, tests, coverage gate, controlled benchmark, wheel smoke test, and `pip-audit` | `.github/workflows/ci.yml`; GitHub Actions run `39816473583` for commit `0472f0c` | Verified: every step of the 3.11/3.12/3.13 jobs and `dependency audit` passed |
 | External benchmark runs weekly/manually | `.github/workflows/external.yml`; local pinned run passed | Local run verified; scheduled remote run remains unverified |
 | General superiority over other tools | — | **Not claimed.** The benchmark is controlled and the external set is two repositories. |
 | A literal "10/10" quality score | — | **Not claimed.** See remaining gaps in `AUDIT.md`. |

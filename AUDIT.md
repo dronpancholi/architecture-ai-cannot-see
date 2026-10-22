@@ -5,6 +5,7 @@ Baseline commit: `5adfea4`
 0.3.0 implementation commit: `c4c0e26`
 0.3.1 follow-up base: `20a3251f86b51ade38a9690b7b97bd7ea6716785`
 0.3.1 implementation commit: `b1700c6ea595b51c77b96023ea8ec7db2a538d89`
+0.3.1 release-readiness follow-up commit: `0472f0c`
 Repository: https://github.com/dronpancholi/architecture-ai-cannot-see
 Branch: `main`
 Baseline tests: 36 passed; working tree clean at audit start.
@@ -101,7 +102,7 @@ New test files and what they cover:
 | `test_benchmark_pins.py` | exact checkout, HEAD verification, anchor failure, target selection |
 | `test_perf.py` | nearest-rank p95 used by the performance report |
 
-Remote CI (GitHub Actions run `39797461409`, commit `a42fbd5`) reports `success`; every step of the Python 3.11, 3.12, and 3.13 jobs and the `dependency audit` job completed successfully. The earlier run `39786564650` covers 0.3.0 only. CLI coverage is 95%.
+Remote CI (GitHub Actions run `39816473583`, commit `0472f0c`) reports `success`; every step of the Python 3.11, 3.12, and 3.13 jobs and the `dependency audit` job completed successfully. The earlier run `39797461409` covers the previous docs-only commit. CLI coverage is 95%.
 
 ## 4. Security report
 
@@ -194,7 +195,7 @@ Cold full build: 466.38 ms, 9.39 MB peak (`tracemalloc`), 29 files, 424 entities
 | A. Source integrity | **Pass** | Baseline `5adfea4` recorded; working tree inspected before edits; no history rewrite or force push; `git diff --check` clean; no unrelated deletion. |
 | B. Security | **Pass with residual risk** | Path containment tests, patch base requirement, sandbox controls, untrusted refusal, `SECURITY.md`; residual risk documented in §4. |
 | C. Verification correctness | **Pass** | 197 tests; per-finding old+new, duplicate-occurrence, and sandbox-evidence regressions; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
-| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI run `39797461409` reports success for 3.11, 3.12, 3.13, and the dependency audit. |
+| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI run `39816473583` reports success for 3.11, 3.12, 3.13, and the dependency audit. |
 | E. Evidence | **Pass, bounded** | `RESULTS.md`, `EXTERNAL.md`, `EVIDENCE.md`, `perf.json`, `docs/CLAIMS.md`; scope caveats stated. |
 | F. Hygiene | **Pass** | `ruff check .` clean; 89.99% coverage (gate 85%); `pip-audit` clean; `python -m build` produced 0.3.1 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
 | G. Documentation | **Pass** | README, architecture, verification, claims matrix, security, contributing, changelog, roadmap, templates aligned with implementation. |
@@ -227,5 +228,5 @@ Cold full build: 466.38 ms, 9.39 MB peak (`tracemalloc`), 29 files, 424 entities
 .venv/bin/python -m build                                   # 0.3.1 sdist + wheel
 # fresh venv: pip install dist/*.whl && ks --help             # passed
 # GitHub Actions: CI run 39786564650                            # prior run, 3.11/3.12/3.13
-# 0.3.1 remote run: 39797461409 (all steps of 3.11/3.12/3.13 + audit passed)
+# 0.3.1 remote run: 39816473583 (all steps of 3.11/3.12/3.13 + audit passed)
 ```
