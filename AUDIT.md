@@ -80,7 +80,7 @@ New test files and what they cover:
 | `test_cli.py` | exit codes 0/1/2/3, JSON output, input errors, drift gate |
 | `test_benchmark_pins.py` | exact checkout, HEAD verification, anchor failure, target selection |
 
-Not verified: Python 3.11–3.13 runtime (CI workflow targets them but has not run remotely); CLI coverage is 70%, the lowest module.
+Remote CI (GitHub Actions run `39786564650`) passed on Python 3.11, 3.12, and 3.13. CLI coverage is 70%, the lowest module.
 
 ## 4. Security report
 
@@ -150,7 +150,7 @@ Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities
 ## 8. Remaining gaps
 
 1. No live-LLM evaluation. The loop is proven only with a deterministic `ScriptedAgent`.
-2. CI has not executed remotely. Workflows are created and YAML-parsed; first run depends on push permissions.
+2. The scheduled external workflow has not been run remotely yet; the controlled CI workflow passed.
 3. External evidence is 10 scenarios over 2 repositories.
 4. Behavioural rules are not a security sandbox.
 5. Python is the only supported language.
@@ -165,7 +165,7 @@ Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities
 | A. Source integrity | **Pass** | Baseline `5adfea4` recorded; working tree inspected before edits; no history rewrite or force push; `git diff --check` clean; no unrelated deletion. |
 | B. Security | **Pass with residual risk** | Path containment tests, patch base requirement, sandbox controls, untrusted refusal, `SECURITY.md`; residual risk documented in §4. |
 | C. Verification correctness | **Pass** | 167 tests; tri-state matrix; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
-| D. Reproducibility | **Pass locally** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test. Remote CI run unverified. |
+| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI passed on 3.11, 3.12, and 3.13 (run `39786564650`). |
 | E. Evidence | **Pass, bounded** | `RESULTS.md`, `EXTERNAL.md`, `EVIDENCE.md`, `perf.json`, `docs/CLAIMS.md`; scope caveats stated. |
 | F. Hygiene | **Pass** | `ruff check .` clean; 87.32% coverage (gate 85%); `python -m build` produced 0.3.0 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
 | G. Documentation | **Pass** | README, architecture, verification, claims matrix, security, contributing, changelog, roadmap, templates aligned with implementation. |
@@ -196,4 +196,5 @@ Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities
 .venv/bin/python benchmarks/perf.py --iterations 20         # recorded above
 .venv/bin/python -m build                                   # 0.3.0 sdist + wheel
 # fresh venv: pip install dist/*.whl && ks --help             # passed
+# GitHub Actions: CI run 39786564650                            # 3.11/3.12/3.13 passed
 ```
