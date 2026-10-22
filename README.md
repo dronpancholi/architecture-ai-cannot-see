@@ -156,7 +156,7 @@ sequenceDiagram
     end
 ```
 
-Rules are evaluated against the **before** and **after** trees. A finding blocks only when it is **introduced**. Legacy debt is recorded, never weaponized against an unrelated change. Safe refactors produce zero findings. The full engineering audit, including verified/unverified items and residual risk, is in [`AUDIT.md`](./AUDIT.md).
+Rules are evaluated against the **before** and **after** trees. A finding blocks only when it is **introduced**. Legacy debt is recorded and is not itself a blocking finding. Safe refactors produce zero findings. The full engineering audit, including verified/unverified items and residual risk, is in [`AUDIT.md`](./AUDIT.md).
 
 Every result is **tri-state**, and matching is **per finding**, not per rule:
 
