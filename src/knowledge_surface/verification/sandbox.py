@@ -131,6 +131,9 @@ def run_behavioral(
             return BehavioralResult(Outcome.PASS, "behavioural check passed")
 
         detail = (_tail(out_path) + "\n" + _tail(err_path)).strip()
+        # Tracebacks contain the random staging path; keep recorded evidence stable.
+        for prefix in sorted({str(root), str(root.resolve())}, key=len, reverse=True):
+            detail = detail.replace(prefix, "<candidate>")
         lines = [line for line in detail.splitlines() if line.strip()]
         message = (lines[-1] if lines else f"behavioural check failed with exit code {code}")[:500]
         evidence = "\n".join(lines[-20:])

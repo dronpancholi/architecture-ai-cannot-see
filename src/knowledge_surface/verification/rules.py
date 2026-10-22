@@ -232,6 +232,13 @@ def _function_key(owner: str, fn: ast.FunctionDef | ast.AsyncFunctionDef,
     return f"fn::{owner}::{fn.name}#{occurrence}"
 
 
+def _occurrence_key(base: str, counts: dict[str, int]) -> str:
+    """Keep the first key stable and suffix later duplicate targets."""
+    occurrence = counts.get(base, 0)
+    counts[base] = occurrence + 1
+    return base if occurrence == 0 else f"{base}#{occurrence}"
+
+
 def _calls_in_own_scope(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> list[tuple[str, int, ast.Call]]:
     """Calls in the function body, excluding nested functions/classes/lambdas."""
     out: list[tuple[str, int, ast.Call]] = []
@@ -328,10 +335,11 @@ class ForbiddenImportRule(Rule):
         for path, tree in sorted(asts.items()):
             if not self.source.search(path):
                 continue
+            counts: dict[str, int] = {}
             for mod, line in _imports(tree):
                 if not self.forbidden.search(mod):
                     continue
-                key = f"import::{mod}"
+                key = _occurrence_key(f"import::{mod}", counts)
                 if (path, key) not in found:
                     found[(path, key)] = Violation(
                         key=key, path=path, line=line,
@@ -470,11 +478,13 @@ class ForbiddenCallRule(Rule):
         for path, tree in sorted(ctx.after_asts().items()):
             if not self.scope.search(path):
                 continue
+            counts: dict[str, int] = {}
             for owner, fn, occurrence in _function_entries(tree):
                 for name, line, _ in _calls_in_own_scope(fn):
                     if not _matches(name, self.callee):
                         continue
-                    key = f"call::{_function_key(owner, fn, occurrence)}::{self.callee}"
+                    base = f"call::{_function_key(owner, fn, occurrence)}::{self.callee}"
+                    key = _occurrence_key(base, counts)
                     found.setdefault((path, key), Violation(
                         key=key, path=path, line=line,
                         message=f"{fn.name} calls forbidden {self.callee}",
@@ -485,7 +495,7 @@ class ForbiddenCallRule(Rule):
             for name, line, _ in _module_level_calls(tree):
                 if not _matches(name, self.callee):
                     continue
-                key = f"call::module::{self.callee}"
+                key = _occurrence_key(f"call::module::{self.callee}", counts)
                 found.setdefault((path, key), Violation(
                     key=key, path=path, line=line,
                     message=f"module calls forbidden {self.callee}",
@@ -537,12 +547,14 @@ class NoOrphanedCallsRule(Rule):
                               message="no deleted functions")
         found: dict[tuple[str, str], Violation] = {}
         for path, tree in sorted(ctx.after_asts().items()):
+            counts: dict[str, int] = {}
             for owner, fn, occurrence in _function_entries(tree):
                 for name, line, _ in _calls_in_own_scope(fn):
                     leaf = name.split(".")[-1]
                     if leaf not in deleted:
                         continue
-                    key = f"orphan::{_function_key(owner, fn, occurrence)}::{leaf}"
+                    base = f"orphan::{_function_key(owner, fn, occurrence)}::{leaf}"
+                    key = _occurrence_key(base, counts)
                     found.setdefault((path, key), Violation(
                         key=key, path=path, line=line,
                         message=f"{fn.name} still calls deleted function {leaf}",
@@ -553,7 +565,7 @@ class NoOrphanedCallsRule(Rule):
                 leaf = name.split(".")[-1]
                 if leaf not in deleted:
                     continue
-                key = f"orphan::module::{leaf}"
+                key = _occurrence_key(f"orphan::module::{leaf}", counts)
                 found.setdefault((path, key), Violation(
                     key=key, path=path, line=line,
                     message=f"module still calls deleted function {leaf}",

@@ -22,8 +22,11 @@ The 0.3.0 audit below is retained as history. The follow-up found that comparing
 | F-3 | Import, forbidden-call, and orphaned-call collection deduplicated by key across files, so the same violation in a second file disappeared. | Deduplicate by `(path, key)`. |
 | F-4 | Parse-error policy was implicit: every parse error made the report incomplete and the global block/warn/ignore switch applied uniformly. | New changed-file parse error is an introduced finding and always blocks; pre-existing unrelated error is diagnostic; pre-existing scoped error makes that rule `UNKNOWN`; global rules remain fail-closed. |
 | F-5 | CLI coverage was 70% and malformed-input, unsupported-file, and per-finding JSON paths were thin. | Expanded CLI tests to 95% module coverage and added per-finding API/CLI regressions. |
+| F-6 | A second identical forbidden call or import in the same file reused the first finding's key, so adding it was hidden as pre-existing. | Deterministic occurrence suffixes (`#1`, `#2`, ...); the first target keeps the unsuffixed key. Counters are per file, so cross-file keys cannot shift. |
+| F-7 | The performance report's p95 used the wrong index for small samples (five samples reported the fourth value, not the maximum) and did not record the command, output path, or environment. | Nearest-rank p95; `perf.json` now records command, output, platform, machine, processor, CPU count, and Python version/implementation. |
+| F-8 | Behavioural-rule evidence included random staging paths, so benchmark reports changed on every run. | Staging paths are replaced with `<candidate>` in evidence (longest path first); `tests/test_sandbox.py` covers the stable form. |
 
-The follow-up adds `tests/test_violation_level.py`, expands `tests/test_tristate.py` and `tests/test_cli.py`, exports `Violation`, adds per-rule violation counts, and updates CI with `pip-audit`. It does not change the historical finding descriptions in sections 1–6.
+The follow-up adds `tests/test_violation_level.py`, expands `tests/test_tristate.py` and `tests/test_cli.py`, exports `Violation`, adds per-rule violation counts, and updates CI with `pip-audit`. It does not change the historical finding descriptions in sections 1–6. A second pass adds duplicate-occurrence keys and the `perf.py` metadata/p95 fix.
 
 ## 1. Audit findings
 
@@ -75,8 +78,8 @@ Command (`.venv`, Python 3.14.6):
 
 ```text
 .venv/bin/python -m pytest --cov=knowledge_surface --cov-report=term --cov-fail-under=85
-193 passed in 2.68s
-TOTAL 2626 statements, 264 missed, 89.95% coverage
+197 passed in 4.19s
+TOTAL 2637 statements, 264 missed, 89.99% coverage
 Required test coverage of 85% reached.
 ```
 
@@ -88,16 +91,17 @@ New test files and what they cover:
 |---|---|
 | `test_paths_and_patch.py` | multi-file/hunk patches, renames, quoted paths, traversal/symlink rejection |
 | `test_tristate.py` | full before/after matrix, unknown policy, parse/completeness policy, ordering |
-| `test_violation_level.py` | per-finding matching, old+new violations in one file and across files, renames, duplicate functions, module scope |
+| `test_violation_level.py` | per-finding matching, old+new violations in one file and across files, renames, duplicate functions, module scope, duplicate calls/imports |
 | `test_require_call.py` | owner scope, nested scope pruning, dominance, async, missing target |
-| `test_sandbox.py` | untrusted refusal, timeout, process-group kill, output bound, minimal env |
+| `test_sandbox.py` | untrusted refusal, timeout, process-group kill, output bound, minimal env, stable evidence |
 | `test_agent_loop.py` | every terminal state, repeated revision, stale `before`, prompt bounds, path/JSON validation |
 | `test_representation.py` | schema version, duplicate IDs, determinism, code-only graph |
 | `test_extractors.py` | exclusions, parse failures, relative imports, ambiguity, dynamic imports, frameworks |
 | `test_cli.py` | exit codes 0/1/2/3, per-finding JSON, malformed inputs, unsupported files, drift gate |
 | `test_benchmark_pins.py` | exact checkout, HEAD verification, anchor failure, target selection |
+| `test_perf.py` | nearest-rank p95 used by the performance report |
 
-Remote CI (GitHub Actions run `39794512119`, commit `b1700c6`) passed the three test jobs on Python 3.11, 3.12, and 3.13, plus the `dependency audit` job. The earlier run `39786564650` covers 0.3.0 only. CLI coverage is 95%.
+Remote CI (GitHub Actions run `39797461409`, commit `a42fbd5`) reports `success`; every step of the Python 3.11, 3.12, and 3.13 jobs and the `dependency audit` job completed successfully. The earlier run `39786564650` covers 0.3.0 only. CLI coverage is 95%.
 
 ## 4. Security report
 
@@ -141,22 +145,24 @@ External benchmark — 10 scenarios, 2 exact-pinned repositories:
 
 Each checkout was fetched at the declared SHA and `git rev-parse HEAD` was verified. `benchmarks/EXTERNAL.md` records tool version 0.3.1; the pinned external run was repeated after the follow-up.
 
-Agent experiment: baseline commits 8/23 safe changes; the verified loop commits 23/23. Average iterations 1.0 → 1.7. Latest average verification overhead 30.2 ms on one host. The revision policy is deterministic; this measures gating and convergence, not live-LLM repair quality.
+Agent experiment: baseline commits 8/23 safe changes; the verified loop commits 23/23. Average iterations 1.0 → 1.7. Latest average verification overhead 28.1 ms on one host. The revision policy is deterministic; this measures gating and convergence, not live-LLM repair quality.
 
 Scope caveat: 23 controlled scenarios and 10 external scenarios are evidence, not proof of general superiority. The controlled fixtures were designed alongside the rules; the external set is two repositories.
 
 ## 6. Performance report
 
-`benchmarks/perf.py --iterations 5`, Python 3.14.6, one host:
+Command: `.venv/bin/python benchmarks/perf.py --iterations 5`
+Output: `benchmarks/perf.json` (regenerated after the final source change).
+Environment: Python 3.14.6 (CPython), macOS-27.2-arm64-arm-64bit-Mach-O, arm64, 10 CPUs, one host.
 
 | Operation | Median | p95 | Min | Max |
 |---|---|---|---|---|
-| Extractor only | 43.69 ms | 44.93 ms | 42.90 ms | 57.47 ms |
-| Full build | 155.24 ms | 158.49 ms | 149.57 ms | 160.78 ms |
-| Verify safe change | 6.52 ms | 6.79 ms | 6.56 ms | 7.69 ms |
-| Sandbox check | 27.26 ms | 46.89 ms | 25.43 ms | 48.57 ms |
+| Extractor only | 45.72 ms | 58.41 ms | 42.89 ms | 58.41 ms |
+| Full build | 158.49 ms | 167.10 ms | 152.99 ms | 167.10 ms |
+| Verify safe change | 6.59 ms | 9.55 ms | 6.51 ms | 9.55 ms |
+| Sandbox check | 23.53 ms | 40.32 ms | 23.25 ms | 40.32 ms |
 
-Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities. This is a regression baseline, not a comparison with other tools.
+Cold full build: 466.38 ms, 9.39 MB peak (`tracemalloc`), 29 files, 424 entities, 1032 relationships. p95 is nearest-rank; with five samples it equals the maximum. This is a regression baseline, not a comparison with other tools.
 
 ## 7. API / compatibility report
 
@@ -172,13 +178,13 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 
 ## 8. Remaining gaps
 
-1. No live-LLM evaluation. The loop is proven only with a deterministic `ScriptedAgent`.
+1. No live-LLM evaluation. The loop is proven only with a deterministic `ScriptedAgent`; `benchmarks/LIVE_LLM.md` defines the held-out, independent-test experiment but it has **not** been run.
 2. The scheduled external workflow has not been run remotely; the local pinned run passed. The controlled CI workflow for `b1700c6` passed as run `39794512119`.
 3. External evidence is 10 scenarios over 2 repositories.
 4. Behavioural rules are not a security sandbox.
 5. Python is the only supported language.
 6. Function renames are treated as introduced (fail-closed); the engine does not attempt semantic rename matching.
-7. Performance was measured on one macOS host, not across platforms.
+7. Performance was measured on one macOS host, not across platforms; `perf.json` records that environment.
 8. `pip-audit` is advisory-data dependent and runs in CI; it is not a proof of absence.
 
 ## 9. Acceptance gates
@@ -187,10 +193,10 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 |---|---|---|
 | A. Source integrity | **Pass** | Baseline `5adfea4` recorded; working tree inspected before edits; no history rewrite or force push; `git diff --check` clean; no unrelated deletion. |
 | B. Security | **Pass with residual risk** | Path containment tests, patch base requirement, sandbox controls, untrusted refusal, `SECURITY.md`; residual risk documented in §4. |
-| C. Verification correctness | **Pass** | 193 tests; per-finding old+new regressions; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
-| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI run `39794512119` passed on 3.11, 3.12, and 3.13 plus the dependency audit. |
+| C. Verification correctness | **Pass** | 197 tests; per-finding old+new, duplicate-occurrence, and sandbox-evidence regressions; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
+| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI run `39797461409` reports success for 3.11, 3.12, 3.13, and the dependency audit. |
 | E. Evidence | **Pass, bounded** | `RESULTS.md`, `EXTERNAL.md`, `EVIDENCE.md`, `perf.json`, `docs/CLAIMS.md`; scope caveats stated. |
-| F. Hygiene | **Pass** | `ruff check .` clean; 89.95% coverage (gate 85%); `pip-audit` clean; `python -m build` produced 0.3.1 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
+| F. Hygiene | **Pass** | `ruff check .` clean; 89.99% coverage (gate 85%); `pip-audit` clean; `python -m build` produced 0.3.1 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
 | G. Documentation | **Pass** | README, architecture, verification, claims matrix, security, contributing, changelog, roadmap, templates aligned with implementation. |
 | H. Final review | **Pass** | Diff reviewed; secrets scan found no obvious credentials; final state recorded in git history. |
 
@@ -198,13 +204,13 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 
 | Dimension | Score | Basis |
 |---|---|---|
-| Verification correctness | 9.5/10 | Complete per-finding matrix, strict patches, conservative rules, 193 tests |
+| Verification correctness | 9.5/10 | Complete per-finding matrix, strict patches, conservative rules, 197 tests |
 | Security | 8.5/10 | Strong path/patch controls; dependency audit in CI; process isolation is explicitly not a sandbox |
 | Reproducibility | 9/10 | Exact pins, HEAD verification, deterministic output, wheel smoke test, verified 0.3.1 remote CI |
 | Evidence quality | 8.5/10 | 23 controlled + 10 external + agent + performance evidence; small external sample |
-| Test depth | 9/10 | 89.95% coverage; CLI at 95%; per-finding regressions |
+| Test depth | 9/10 | 89.99% coverage; CLI at 95%; per-finding regressions |
 | Documentation / maintainability | 9/10 | Claims matrix, limits, templates, changelog, roadmap |
-| Production readiness | 6/10 | Alpha, Python-only, no live-LLM or dependency-audit gate |
+| Production readiness | 6/10 | Alpha, Python-only, no live-LLM result; dependency audit exists but is advisory-only |
 
 **Scoped overall: 8.5/10.** This is a materially stronger reference implementation than the baseline, with per-finding correctness, parse policy, dependency audit, and CLI coverage materially improved. It is **not** a production-hardened verifier and **not** a 10/10: live-model behaviour, broader external evidence, real sandboxing, and cross-platform performance remain open.
 
@@ -212,14 +218,14 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 
 ```text
 .venv/bin/ruff check .                                      # All checks passed
-.venv/bin/python -m pytest --cov=... --cov-fail-under=85    # 193 passed, 89.95%
+.venv/bin/python -m pytest --cov=... --cov-fail-under=85    # 197 passed, 89.99%
 .venv/bin/python benchmarks/runner.py                       # 23 scenarios, 0 FP/FN
 .venv/bin/python benchmarks/external.py                     # 10 scenarios, 0 FP/FN
 .venv/bin/python benchmarks/agent_experiment.py             # 8/23 -> 23/23
-.venv/bin/python benchmarks/perf.py --iterations 5           # recorded above
+.venv/bin/python benchmarks/perf.py --iterations 5           # writes benchmarks/perf.json
 .venv/bin/pip-audit --skip-editable                         # no known vulnerabilities
 .venv/bin/python -m build                                   # 0.3.1 sdist + wheel
 # fresh venv: pip install dist/*.whl && ks --help             # passed
 # GitHub Actions: CI run 39786564650                            # prior run, 3.11/3.12/3.13
-# 0.3.1 remote run: 39794512119 (3.11/3.12/3.13 + audit passed)
+# 0.3.1 remote run: 39797461409 (all steps of 3.11/3.12/3.13 + audit passed)
 ```

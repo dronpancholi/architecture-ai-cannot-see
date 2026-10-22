@@ -68,6 +68,14 @@ def test_timeout_kills_process_group():
     assert elapsed < 5
 
 
+def test_failure_evidence_hides_temporary_path():
+    result = _run("def check():\n    raise AssertionError('stable evidence')\n")
+    assert result.outcome is Outcome.FAIL
+    assert "<candidate>" in result.evidence
+    assert "ks-behavior-" not in result.evidence
+    assert "/private<candidate>" not in result.evidence
+
+
 def test_output_is_bounded():
     result = _run(
         "def check():\n"

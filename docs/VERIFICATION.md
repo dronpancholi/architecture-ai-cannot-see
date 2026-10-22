@@ -7,7 +7,7 @@ The original checker flagged any change that *touched* an invariant's scope. Tha
 1. Parse the change set against a real base checkout. Patches that do not apply, do not supply a base for modified/deleted files, or contain malformed hunks are rejected with a diagnostic. The parser never invents source.
 2. Build the before and after source trees (the after tree is the before tree with the change set overlaid).
 3. Evaluate every rule against both trees. Each built-in rule records **every** violation with a stable semantic key, not only the first.
-4. Match findings individually. Identity is `(canonical_path, semantic_key)`; line numbers are not identity. A file rename maps the after path to the old path.
+4. Match findings individually. Identity is `(canonical_path, semantic_key)`; line numbers are not identity. A file rename maps the after path to the old path. Repeated identical targets in one file get deterministic `#1`, `#2`, ... suffixes, so a second forbidden call/import is a new finding; counters are per file.
 5. Only an **introduced** finding blocks. Old debt with the same identity is reported as **pre-existing**; an old finding that disappears is an **improvement**.
 6. A result that cannot be evaluated is **`UNKNOWN`**, is never treated as a pass, and is never classified as pre-existing.
 7. A rule that fails but is suppressed by an allowlist is reported as **suppressed**.

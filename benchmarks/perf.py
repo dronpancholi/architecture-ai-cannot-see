@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import os
+import platform
 import statistics
+import sys
 import time
 import tracemalloc
 from pathlib import Path
@@ -27,6 +31,12 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "benchmarks" / "fixtures" / "layered_webapp"
 
 
+def _p95(samples: list[float]) -> float:
+    """Nearest-rank 95th percentile; for five samples this is the maximum."""
+    ordered = sorted(samples)
+    return ordered[min(len(ordered) - 1, math.ceil(0.95 * len(ordered)) - 1)]
+
+
 def _time(fn, iterations: int) -> dict:
     samples: list[float] = []
     for _ in range(iterations):
@@ -36,7 +46,7 @@ def _time(fn, iterations: int) -> dict:
     return {
         "iterations": iterations,
         "median_ms": round(statistics.median(samples), 2),
-        "p95_ms": round(sorted(samples)[max(0, int(len(samples) * 0.95) - 1)], 2),
+        "p95_ms": round(_p95(samples), 2),
         "min_ms": round(min(samples), 2),
         "max_ms": round(max(samples), 2),
     }
@@ -67,7 +77,17 @@ def main() -> None:
     ])
 
     payload = {
-        "host_python": __import__("sys").version.split()[0],
+        "command": f"python benchmarks/perf.py --iterations {args.iterations}",
+        "output": "benchmarks/perf.json",
+        "environment": {
+            "platform": platform.platform(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+            "cpu_count": os.cpu_count(),
+            "python": sys.version.split()[0],
+            "implementation": platform.python_implementation(),
+        },
+        "host_python": sys.version.split()[0],
         "extractor_only": _time(
             lambda: PythonASTExtractor(source_root).build(), args.iterations
         ),
@@ -112,7 +132,8 @@ def main() -> None:
     print(
         f"\nCold full build: {cold['duration_ms']:.2f} ms, "
         f"{cold['peak_tracemalloc_mb']:.2f} MB peak, "
-        f"{cold['files']} files, {cold['entities']} entities."
+        f"{cold['files']} files, {cold['entities']} entities, "
+        f"{cold['relationships']} relationships."
     )
 
 

@@ -8,7 +8,7 @@ Evidence that the verifier works, and an honest account of what it does not prov
 python benchmarks/runner.py            # controlled fixtures -> RESULTS.md
 python benchmarks/external.py          # real public repos  -> EXTERNAL.md
 python benchmarks/agent_experiment.py  # baseline vs loop  -> EVIDENCE.md
-python benchmarks/perf.py              # local latency/memory -> perf.json
+python benchmarks/perf.py --iterations 5   # local latency/memory -> perf.json
 ```
 
 ## What is measured
@@ -39,10 +39,14 @@ The label is the ground truth. The verifier never grades itself.
 | `agent_experiment.py` | same 23 scenarios, baseline vs loop | 23 |
 | `perf.py` | project source + layered fixture (single host) | n/a |
 
+`LIVE_LLM.md` specifies a held-out live-model experiment with a one-shot
+baseline, independent hidden tests, and recorded failures. It has **not been
+run**; no live-LLM pass rate is claimed.
+
 ## Honest limits
 
 - The controlled fixtures are designed alongside the rules. A perfect score there shows the engine implements the rules correctly; it does not show the rules generalise.
 - The external benchmark is real code at exact pinned commits (HEAD verified), but 10 scenarios over 2 repositories is a signal, not a proof.
-- `perf.py` is a regression baseline on one host, not a comparison with other tools. Numbers vary with machine load; `perf.json` records the latest run.
+- `perf.py` is a regression baseline on one host, not a comparison with other tools. Numbers vary with machine load; `perf.json` records the command, output path, environment, and latest run.
 - The agent experiment's revision is a deterministic safe repair. It measures gating and convergence, not LLM repair quality.
 - Rules are only as good as their declarations. The engine cannot invent an invariant that was never written.

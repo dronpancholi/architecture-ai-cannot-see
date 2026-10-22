@@ -25,4 +25,4 @@ Out of scope: denial of service against the host by deliberately trusted code, v
 
 ## Dependencies
 
-Runtime dependencies are limited to `pydantic`, `networkx`, `click`, and `rich`. CI runs the test suite and lint on every push. There is no automated dependency-audit gate yet; see `ROADMAP.md`.
+Runtime dependencies are limited to `pydantic`, `networkx`, `click`, and `rich`. CI runs the test suite and lint on every push, plus `pip-audit --skip-editable` in the `dependency audit` job. The local 0.3.1 environment reported no known vulnerabilities. `pip-audit` is advisory-data dependent; a clean scan is not proof that dependencies are vulnerability-free.

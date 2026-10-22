@@ -9,7 +9,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-193%20passing-brightgreen.svg)](#whats-proven)
+[![Tests](https://img.shields.io/badge/tests-197%20passing-brightgreen.svg)](#whats-proven)
 [![Benchmark](https://img.shields.io/badge/benchmark-100%25%20precision%20%2F%20recall-brightgreen.svg)](./benchmarks/RESULTS.md)
 [![External](https://img.shields.io/badge/external%20repos-2%20real%20projects-blueviolet.svg)](./benchmarks/EXTERNAL.md)
 [![Whitepaper](https://img.shields.io/badge/whitepaper-PDF-red.svg)](./docs/whitepaper.pdf)
@@ -168,7 +168,7 @@ Every result is **tri-state**, and matching is **per finding**, not per rule:
 | `UNKNOWN` | `FAIL` | unknown (never pre-existing) |
 | any | `UNKNOWN` | unknown (never a pass) |
 
-The finding key is semantic and stable across line shifts: `(canonical_path, semantic_key)`. A file rename maps the after path back to the old path, so unchanged debt stays pre-existing. A renamed function gets a new key and is treated as **introduced** (fail-closed), not silently inherited.
+The finding key is semantic and stable across line shifts: `(canonical_path, semantic_key)`. A file rename maps the after path back to the old path, so unchanged debt stays pre-existing. A renamed function gets a new key and is treated as **introduced** (fail-closed), not silently inherited. Repeated identical targets in one file get `#1`, `#2`, ... suffixes, so adding a second forbidden call or import is a new finding, not hidden by the first.
 
 `unknown` is a first-class report section and blocks by default (`--unknown-policy block`). A rule that targets a missing function fails unless the rule is explicitly optional (`required: false`).
 
@@ -219,11 +219,11 @@ Ground truth is the scenario label, not the verifier's own verdict.
 |---|---|---|
 | Changes that are actually safe | 8/23 (35%) | **23/23 (100%)** |
 | Unsafe changes committed | 15/23 | **0/23** |
-| Average verification overhead | 0 ms | ~30 ms (latest 30.2 ms on one host) |
+| Average verification overhead | 0 ms | ~30 ms (latest 28.1 ms on one host) |
 
 Full breakdown: [`benchmarks/EVIDENCE.md`](./benchmarks/EVIDENCE.md).
 
-> **Honest note:** the revision in this experiment is a deterministic safe repair, so the experiment measures the loop's ability to *gate and converge*, not an LLM's repair quality. The `LLMAgent` adapter in `agent/llm_adapter.py` plugs in any `complete(prompt) -> str` model for a real experiment.
+> **Honest note:** the revision in this experiment is a deterministic safe repair, so the experiment measures the loop's ability to *gate and converge*, not an LLM's repair quality. The `LLMAgent` adapter in `agent/llm_adapter.py` plugs in any `complete(prompt) -> str` model for a real experiment. The live-LLM protocol is specified in [`benchmarks/LIVE_LLM.md`](./benchmarks/LIVE_LLM.md); it has **not been run** and no live result is claimed.
 
 ---
 
@@ -394,21 +394,22 @@ ks report <ks.json>                           Full architectural report
 
 ## What's Proven
 
-193 tests, all passing (89.95% statement coverage under `pytest-cov`; CLI module 95%).
+197 tests, all passing (89.99% statement coverage under `pytest-cov`; CLI module 95%).
 
 | Test file | What it proves |
 |-----------|----------------|
 | `tests/test_verification.py` | Semantic rules, regression-only blocking, allowlist, behavioural checks, patch parsing |
 | `tests/test_paths_and_patch.py` | Multi-file/multi-hunk patches, renames, quoted paths, traversal and symlink escape rejection |
 | `tests/test_tristate.py` | The complete before/after matrix, unknown policy, parse/completeness policy, deterministic ordering |
-| `tests/test_violation_level.py` | Per-finding matching: old debt plus a new violation, cross-file findings, renames, duplicate functions, module scope |
+| `tests/test_violation_level.py` | Per-finding matching: old debt plus a new violation, cross-file findings, renames, duplicate functions, module scope, duplicate calls/imports |
 | `tests/test_require_call.py` | Scope pruning, conditional dominance, async, owner scoping, missing targets |
-| `tests/test_sandbox.py` | Untrusted refusal, timeout, process-group kill, bounded output, minimal environment |
+| `tests/test_sandbox.py` | Untrusted refusal, timeout, process-group kill, bounded output, minimal environment, stable evidence |
 | `tests/test_agent_loop.py` | Loop terminal states, repeated revisions, stale `before`, prompt bounds, path/JSON validation |
 | `tests/test_representation.py` | Schema versioning, duplicate IDs, deterministic serialization, code-only dependency graph |
 | `tests/test_extractors.py` | Exclusions, parse failures, relative imports, ambiguous calls, dynamic imports, frameworks |
 | `tests/test_agent_and_benchmark.py` | Feedback loop converges; controlled benchmark meets the quality bar |
 | `tests/test_benchmark_pins.py` | Exact-pin checkout, HEAD verification, anchor failures, target selection |
+| `tests/test_perf.py` | Nearest-rank p95 used by the performance report |
 | `tests/test_deep_extractors.py`, `test_entities.py`, `test_knowledge_surface.py` | Deep edges, graph reasoning, serialization |
 | `tests/test_consistency.py`, `test_propagation.py`, `test_drift.py`, `test_whitepaper_claims.py` | Reasoning, propagation, drift, whitepaper claims |
 | `tests/test_cli.py` | CLI exit codes, malformed inputs, JSON output, per-finding reports, drift gate |
@@ -418,7 +419,7 @@ pytest -q
 python benchmarks/runner.py          # controlled benchmark
 python benchmarks/external.py        # pinned real public repos
 python benchmarks/agent_experiment.py
-python benchmarks/perf.py           # local performance baseline
+python benchmarks/perf.py --iterations 5   # local performance baseline
 ```
 
 ---
@@ -450,11 +451,11 @@ python benchmarks/perf.py           # local performance baseline
 │   ├── external.py               # pinned real-repo benchmark
 │   ├── agent_experiment.py       # baseline vs. loop
 │   ├── perf.py · perf.json       # local performance baseline
-│   ├── RESULTS.md · EXTERNAL.md · EVIDENCE.md
+│   ├── RESULTS.md · EXTERNAL.md · EVIDENCE.md · LIVE_LLM.md
 ├── examples/                     # demo codebases, rules, patch
 ├── .github/workflows/            # CI + scheduled external benchmark
 ├── SECURITY.md · CONTRIBUTING.md · CHANGELOG.md · ROADMAP.md
-└── tests/                        # 193 tests
+└── tests/                        # 197 tests
 ```
 
 ---
@@ -466,7 +467,7 @@ The whitepaper is explicit that this problem is unsolved. So is this implementat
 - **Structural rules are not full data flow.** A violation hidden behind dynamic dispatch may be reported as `UNKNOWN` rather than proven. Call-graph resolution is conservative: ambiguous or locally shadowed names are skipped.
 - **Behavioural rules execute code.** They run in a temp dir with a minimal environment, wall-clock timeout, process-group kill, output bound, and POSIX rlimits — but this is process isolation, not a security sandbox. Untrusted snippets are refused unless `trusted: true` or `allow_untrusted_behavioral=True` is set deliberately inside real isolation.
 - **Unknown is not proof.** Parse failures, ambiguous call targets, and unresolved dynamic imports are reported as `UNKNOWN` and block by default. `--unknown-policy warn` accepts rule-level unknowns but still blocks a new parse error; `ignore` drops rule-level unknowns from the approval decision while leaving `rule_results` and `parse_errors` visible. Use either only when you accept an incomplete gate.
-- **No real-LLM result is claimed.** The loop is tested with a deterministic `ScriptedAgent`; `LLMAgent` validates and bounds prompts, but a live model run needs credentials and is not part of the measured evidence.
+- **No real-LLM result is claimed.** The loop is tested with a deterministic `ScriptedAgent`; `LLMAgent` validates and bounds prompts, but a live model run needs credentials and is not part of the measured evidence. [`benchmarks/LIVE_LLM.md`](./benchmarks/LIVE_LLM.md) defines the baseline, held-out tasks, independent hidden tests, and failure recording for a future run.
 - **Rules must be declared.** The engine cannot invent an invariant that was never written anywhere. That is the tacit-knowledge problem.
 - **The benchmark is controlled.** The 23 scenarios are designed to isolate specific rules. The external benchmark adds real-world signal at pinned commits, but ten scenarios over two repositories is not a proof of general superiority.
 - **The agent experiment uses a deterministic repair.** It proves the loop gates and converges; it does not prove an arbitrary LLM will repair well.

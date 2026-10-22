@@ -1,39 +1,49 @@
 {
   "cold_build_first_run": {
-    "duration_ms": 459.11,
-    "entities": 423,
+    "duration_ms": 466.38,
+    "entities": 424,
     "files": 29,
-    "peak_tracemalloc_mb": 9.34,
-    "relationships": 1028
+    "peak_tracemalloc_mb": 9.39,
+    "relationships": 1032
+  },
+  "command": "python benchmarks/perf.py --iterations 5",
+  "environment": {
+    "cpu_count": 10,
+    "implementation": "CPython",
+    "machine": "arm64",
+    "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "python": "3.14.6"
   },
   "extractor_only": {
     "iterations": 5,
-    "max_ms": 55.54,
-    "median_ms": 43.69,
-    "min_ms": 42.73,
-    "p95_ms": 43.75
+    "max_ms": 58.41,
+    "median_ms": 45.72,
+    "min_ms": 42.89,
+    "p95_ms": 58.41
   },
   "fixture": "benchmarks/fixtures/layered_webapp",
   "full_build": {
     "iterations": 5,
-    "max_ms": 190.39,
-    "median_ms": 155.24,
-    "min_ms": 151.66,
-    "p95_ms": 160.2
+    "max_ms": 167.1,
+    "median_ms": 158.49,
+    "min_ms": 152.99,
+    "p95_ms": 167.1
   },
   "host_python": "3.14.6",
+  "output": "benchmarks/perf.json",
   "sandbox": {
     "iterations": 5,
-    "max_ms": 49.44,
-    "median_ms": 27.26,
-    "min_ms": 27.01,
-    "p95_ms": 48.13
+    "max_ms": 40.32,
+    "median_ms": 23.53,
+    "min_ms": 23.25,
+    "p95_ms": 40.32
   },
   "verify_safe_change": {
     "iterations": 5,
-    "max_ms": 7.61,
-    "median_ms": 6.52,
-    "min_ms": 6.42,
-    "p95_ms": 6.57
+    "max_ms": 9.55,
+    "median_ms": 6.59,
+    "min_ms": 6.51,
+    "p95_ms": 9.55
   }
 }

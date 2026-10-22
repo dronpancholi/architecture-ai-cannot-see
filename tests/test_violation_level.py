@@ -129,6 +129,36 @@ def test_function_rename_is_fail_closed_not_silently_safe(tmp_path):
     assert all("renamed" in f.key for f in report.findings)
 
 
+def test_second_forbidden_call_in_same_function_is_introduced(tmp_path):
+    before = "def f():\n    eval('1')\n"
+    after = before + "    eval('2')\n"
+    root = _root(tmp_path, {"m.py": before})
+    report = SemanticVerifier([ForbiddenCallRule("no-eval", r"^m\.py$", "eval")]).verify(
+        root, _change("m.py", before, after)
+    )
+
+    assert not report.approved
+    assert [f.key for f in report.findings] == ["call::fn::::f#0::eval#1"]
+    assert [f.key for f in report.preexisting] == ["call::fn::::f#0::eval"]
+
+
+def test_second_forbidden_import_is_introduced(tmp_path):
+    before = "from app.db import Database\n"
+    after = before + before
+    root = _root(tmp_path, {"m.py": before})
+    rule = ForbiddenImportRule("layer", r"^m\.py$", r"app\.db")
+    report = SemanticVerifier([rule]).verify(root, _change("m.py", before, after))
+
+    assert not report.approved
+    assert len(report.findings) == 2
+    assert {f.key for f in report.findings} == {
+        "import::app.db#1", "import::app.db.Database#1",
+    }
+    assert {f.key for f in report.preexisting} == {
+        "import::app.db", "import::app.db.Database",
+    }
+
+
 def test_module_level_and_function_violations_are_independent(tmp_path):
     before = "def f():\n    eval('1')\n"
     after = "eval('2')\n" + before
