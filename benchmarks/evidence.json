@@ -1,0 +1,114 @@
+[
+  {
+    "scenario": "layer-violation-direct-db",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 17.17
+  },
+  {
+    "scenario": "layer-safe-rename",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 7.84
+  },
+  {
+    "scenario": "layer-violation-auth-order",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 19.08
+  },
+  {
+    "scenario": "layer-safe-add-method",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 9.71
+  },
+  {
+    "scenario": "layer-preexisting-debt",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 7.69
+  },
+  {
+    "scenario": "auth-missing-authorize-delete",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 10.08
+  },
+  {
+    "scenario": "auth-missing-authorize-transfer",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 11.78
+  },
+  {
+    "scenario": "auth-safe-logging",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 7.5
+  },
+  {
+    "scenario": "auth-mutable-default",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 18.07
+  },
+  {
+    "scenario": "auth-missing-annotation",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 15.24
+  },
+  {
+    "scenario": "pricing-float-regression",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 177.73
+  },
+  {
+    "scenario": "pricing-negative-total",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 194.46
+  },
+  {
+    "scenario": "pricing-safe-refactor",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 92.42
+  },
+  {
+    "scenario": "plugin-registry-importlib",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 8.34
+  },
+  {
+    "scenario": "plugin-registry-eval",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 15.68
+  },
+  {
+    "scenario": "plugin-safe-logging",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 3.8
+  }
+]

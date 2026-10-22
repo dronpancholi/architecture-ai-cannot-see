@@ -1,0 +1,275 @@
+{
+  "aggregate": {
+    "scenarios": 16,
+    "tp": 10,
+    "fp": 0,
+    "tn": 6,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "accuracy": 1.0,
+    "false_positive_rate": 0.0
+  },
+  "results": [
+    {
+      "scenario": "layer-violation-direct-db",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "layer-route-no-db",
+          "path": "app/routes/orders.py",
+          "line": 3,
+          "message": "routes must not import the database layer directly",
+          "evidence": "app/routes/orders.py:3 imports app.db.Database; app/routes/orders.py:3 imports app.db",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "layer-safe-rename",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (2 rules, 0 pre-existing)",
+      "findings": []
+    },
+    {
+      "scenario": "layer-violation-auth-order",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "service-authorize-first",
+          "path": "app/services/orders.py",
+          "line": 10,
+          "message": "order service must authorize before inserting",
+          "evidence": "app/services/orders.py:10 authorize called after insert",
+          "suggestion": "Call authorize before the protected operation.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "layer-safe-add-method",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (2 rules, 0 pre-existing)",
+      "findings": []
+    },
+    {
+      "scenario": "layer-preexisting-debt",
+      "category": "preexisting-debt",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (2 rules, 1 pre-existing)",
+      "findings": []
+    },
+    {
+      "scenario": "auth-missing-authorize-delete",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "delete-authorize",
+          "path": "auth/service.py",
+          "line": 10,
+          "message": "delete_account must authorize before deleting",
+          "evidence": "auth/service.py:10 delete_account does not call authorize",
+          "suggestion": "Call authorize before the protected operation.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "auth-missing-authorize-transfer",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "transfer-authorize",
+          "path": "auth/service.py",
+          "line": 14,
+          "message": "transfer must authorize before moving funds",
+          "evidence": "auth/service.py:14 transfer does not call authorize",
+          "suggestion": "Call authorize before the protected operation.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "auth-safe-logging",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (4 rules, 0 pre-existing)",
+      "findings": []
+    },
+    {
+      "scenario": "auth-mutable-default",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "no-mutable-default",
+          "path": "auth/service.py",
+          "line": 18,
+          "message": "functions must not use mutable default arguments",
+          "evidence": "auth/service.py:18 log mutable default",
+          "suggestion": "Use None as the default and create the container inside the function.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "auth-missing-annotation",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "public-annotated",
+          "path": "auth/service.py",
+          "line": 18,
+          "message": "public functions must be fully annotated",
+          "evidence": "auth/service.py:18 ping missing annotations",
+          "suggestion": "Add parameter and return type annotations.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "pricing-float-regression",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 2 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "no-float",
+          "path": "pricing/engine.py",
+          "line": 9,
+          "message": "line_total calls forbidden float",
+          "evidence": "pricing/engine.py:9",
+          "suggestion": "Remove the call to float.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        },
+        {
+          "rule_id": "non-negative-total",
+          "path": "",
+          "line": 0,
+          "message": "behavioral violation: TypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-7uytvw1e/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
+          "suggestion": "Restore the behavior the invariant requires.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "pricing-negative-total",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "non-negative-total",
+          "path": "",
+          "line": 0,
+          "message": "behavioral violation: AssertionError: negative total: -10",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-3tcllhvp/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-3tcllhvp/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
+          "suggestion": "Restore the behavior the invariant requires.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "pricing-safe-refactor",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (2 rules, 0 pre-existing)",
+      "findings": []
+    },
+    {
+      "scenario": "plugin-registry-importlib",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "registry-no-importlib",
+          "path": "host/registry.py",
+          "line": 3,
+          "message": "registry must delegate dynamic imports to PluginLoader",
+          "evidence": "host/registry.py:3 imports importlib",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "plugin-registry-eval",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "registry-no-eval",
+          "path": "host/registry.py",
+          "line": 12,
+          "message": "unsafe calls forbidden eval",
+          "evidence": "host/registry.py:12",
+          "suggestion": "Remove the call to eval.",
+          "severity": "error",
+          "introduced": true,
+          "confidence": "known"
+        }
+      ]
+    },
+    {
+      "scenario": "plugin-safe-logging",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (3 rules, 0 pre-existing)",
+      "findings": []
+    }
+  ]
+}

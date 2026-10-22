@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "type": "forbidden_import",
+      "id": "layer-route-no-db",
+      "source": "app/routes/.*\\.py$",
+      "forbidden": "app\\.db",
+      "description": "routes must not import the database layer directly"
+    }
+  ],
+  "allowlist": []
+}

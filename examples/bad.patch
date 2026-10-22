@@ -1,0 +1,9 @@
+diff --git a/app/routes/orders.py b/app/routes/orders.py
+--- a/app/routes/orders.py
++++ b/app/routes/orders.py
+@@ -1,4 +1,5 @@
+ """Order routes (HTTP layer)."""
+ 
++from app.db import Database
+ from app.services.orders import OrderService
+ 

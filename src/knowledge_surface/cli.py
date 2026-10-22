@@ -14,6 +14,10 @@ from .drift.detector import SemanticDriftDetector
 from .extractors.python_ast import PythonASTExtractor
 from .representation.invariants import HeuristicInvariantExtractor
 from .representation.knowledge_surface import KnowledgeSurface
+from .verification.change import ChangeSet
+from .verification.config import load_rules
+from .verification.engine import SemanticVerifier
+from .verification.feedback import to_markdown as verification_markdown
 
 console = Console()
 
@@ -122,6 +126,23 @@ def report(ks_file: str) -> None:
     console.print("\n## Unknowns (honest uncertainty)")
     for u in ks.unknowns():
         console.print("  -", u)
+
+
+@cli.command("verify")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--patch", type=click.Path(exists=True), required=True, help="Unified diff to verify.")
+@click.option("--rules", type=click.Path(exists=True), required=True, help="JSON rule config.")
+@click.option("--json-out", type=click.Path(), default=None)
+def verify(path: str, patch: str, rules: str, json_out: str | None) -> None:
+    """Verify a proposed patch against architectural invariants."""
+    rule_list, allow = load_rules(rules)
+    changes = ChangeSet.from_patch(Path(patch).read_text())
+    report = SemanticVerifier(rule_list, allow).verify(Path(path), changes)
+    console.print(verification_markdown(report))
+    if json_out:
+        Path(json_out).write_text(json.dumps(report.to_dict(), indent=2))
+    if not report.approved:
+        raise SystemExit(1)
 
 
 def main() -> None:

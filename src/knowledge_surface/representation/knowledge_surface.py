@@ -50,6 +50,9 @@ class KnowledgeSurface:
     def entity(self, eid: str) -> Entity | None:
         return self._entities.get(eid)
 
+    def has_relationship(self, rid: str) -> bool:
+        return rid in self._relationships
+
     def entities(self, kind: EntityKind | None = None) -> list[Entity]:
         out = list(self._entities.values())
         if kind is not None:

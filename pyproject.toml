@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "knowledge-surface"
-version = "0.1.0"
+version = "0.2.0"
 description = "A reference implementation of the Knowledge Surface: a structured representation of both architectures of a software system."
 readme = "README.md"
 license = { text = "MIT" }
