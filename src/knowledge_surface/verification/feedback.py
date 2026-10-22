@@ -8,6 +8,7 @@ from .engine import Finding, VerificationReport
 def _item(f: Finding, blocking: bool) -> dict:
     return {
         "rule": f.rule_id,
+        "key": f.key,
         "file": f.path,
         "line": f.line,
         "problem": f.message,
@@ -30,6 +31,9 @@ def feedback_items(report: VerificationReport) -> list[dict]:
     ]
     items.extend(_item(f, report.unknown_policy == "block") for f in report.unknown)
     for error in report.parse_errors:
+        if error["introduced"]:
+            # Already reported as an introduced finding above.
+            continue
         items.append({
             "rule": "parse-error",
             "file": error["path"],
@@ -37,10 +41,10 @@ def feedback_items(report: VerificationReport) -> list[dict]:
             "problem": error["error"],
             "evidence": error["error"],
             "fix": "Fix the syntax error or remove the file from the change.",
-            "status": "unknown" if error["introduced"] else "preexisting",
+            "status": "preexisting",
             "before": "",
             "after": error["error"],
-            "blocking": error["introduced"],
+            "blocking": False,
             "suppressed": False,
             "suppression_reason": "",
         })
@@ -81,16 +85,17 @@ def to_markdown(report: VerificationReport) -> str:
             lines.append(f"- **Fix:** {f.suggestion}")
             lines.append("")
     if report.parse_errors:
-        lines.append("### Parse errors")
-        lines.append("")
-        for error in report.parse_errors:
-            scope = "introduced" if error["introduced"] else "pre-existing"
-            lines.append(f"- `{error['path']}` ({scope}): {error['error']}")
-        lines.append("")
+        remaining = [e for e in report.parse_errors if not e["introduced"]]
+        if remaining:
+            lines.append("### Pre-existing parse errors")
+            lines.append("")
+            for error in remaining:
+                lines.append(f"- `{error['path']}`: {error['error']}")
+            lines.append("")
     if not report.complete:
         lines.append(
-            "_Verification is incomplete: not every file could be parsed or "
-            "represented. Treat the result as indeterminate._"
+            "_Verification is incomplete: the change introduced an unparseable "
+            "file or contains unsupported content. Treat the result as blocked._"
         )
         lines.append("")
     return "\n".join(lines)

@@ -2,6 +2,34 @@
 
 All notable changes to this project are documented here. The format follows Keep a Changelog; versions follow Semantic Versioning.
 
+## [0.3.1] — 2026-10-22
+
+Follow-up correctness release. Verification now compares independent findings, so a new violation is never hidden by older debt under the same rule.
+
+### Fixed
+
+- Rules that already failed no longer mask a new violation. Findings are matched by `(canonical_path, semantic_key)`, not by the rule's aggregate outcome.
+- Stable finding keys exclude line numbers, so moving or reformatting an existing violation does not make it "introduced". File renames map the after path to the old path; a renamed function gets a new key and is treated as introduced (fail-closed).
+- All built-in rules collect every violation, including multiple functions, duplicate function names, nested definitions, module-level calls, multiple imports, and multiple findings per file. A cross-file deduplication bug in the import, forbidden-call, and orphaned-call rules is fixed.
+- Parse policy is explicit: a new parse error in a changed file is an introduced finding and blocks under `warn` and `ignore`; a pre-existing error outside a rule's scope is diagnostic only; a pre-existing error inside a rule's scope makes that rule `UNKNOWN`. Global-scope rules can still be indeterminate on any pre-existing error, which is documented fail-closed behaviour.
+- `unknown_policy="ignore"` now clears unknown findings from the approval decision while keeping `rule_results` and `parse_errors` visible.
+- Behavioural failures use the stable key `behavior::<rule_id>`.
+
+### Added
+
+- `Violation` is a public export; `RuleResult.violations` and per-rule violation counts are available through the API and JSON report.
+- `tests/test_violation_level.py` covers same-file and cross-file old+new violations, `require_call` old+new, repaired-old+new, unchanged debt, file rename, function rename, module scope, duplicate functions, annotations, and mutable defaults.
+- CLI tests for per-finding JSON, malformed input, invalid configs, unsupported files, partial extraction, and all exit codes.
+- Controlled benchmark expanded from 17 to 23 scenarios; CI now runs `pip-audit --skip-editable`.
+
+### Changed
+
+- Test count: 167 → 193. Statement coverage: 87.32% → 89.95%; CLI module 70% → 95%.
+- Controlled benchmark: 23 scenarios, 15 TP, 8 TN, 0 FP/FN/unknown/incomplete.
+- Agent experiment: baseline 8/23 safe → 23/23 with the loop; average overhead 30.2 ms.
+- GitHub Actions updated to `actions/checkout@v7`, `actions/setup-python@v7`, and `actions/upload-artifact@v7`.
+- Version: 0.3.0 → 0.3.1.
+
 ## [0.3.0] — 2026-10-22
 
 Security and correctness release. The verifier no longer guesses when it cannot see the whole candidate file, and "unknown" is no longer silently treated as "passed".

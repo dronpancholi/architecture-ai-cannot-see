@@ -1,6 +1,6 @@
 # External Benchmark — Real Public Repositories
 
-- Tool: `knowledge-surface 0.3.0`
+- Tool: `knowledge-surface 0.3.1`
 - Targets: 2
 - Scenarios: 10
 - Every checkout is pinned and HEAD-verified before scenarios run.

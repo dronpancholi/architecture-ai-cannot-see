@@ -8,7 +8,7 @@ import pytest
 
 from knowledge_surface.verification.change import ChangeSet, FileChange
 from knowledge_surface.verification.engine import SemanticVerifier
-from knowledge_surface.verification.rules import Outcome, Rule, RuleResult
+from knowledge_surface.verification.rules import ForbiddenImportRule, Outcome, Rule, RuleResult
 
 
 class ContentRule(Rule):
@@ -119,7 +119,7 @@ def test_rule_exception_becomes_unknown(tmp_path):
     assert "rule bug" in report.unknown[0].message
 
 
-def test_parse_error_in_changed_file_blocks(tmp_path):
+def test_parse_error_in_changed_file_is_an_introduced_finding(tmp_path):
     root = _root(tmp_path, "x = 1\n")
     bad = "def broken(:\n"
     report = SemanticVerifier([ContentRule()]).verify(root, _change("x = 1\n", bad))
@@ -127,24 +127,71 @@ def test_parse_error_in_changed_file_blocks(tmp_path):
     assert not report.complete
     assert report.parse_errors
     assert report.parse_errors[0]["introduced"] is True
-    assert any(f.rule_id == "parse-error" for f in report.unknown)
+    parse_findings = [f for f in report.findings if f.rule_id == "parse-error"]
+    assert len(parse_findings) == 1
+    assert parse_findings[0].status == "introduced"
+    assert not report.unknown
+
+    # A new syntax error is a defect, not merely an unknown: warn/ignore must
+    # not make it approvable.
+    for policy in ("warn", "ignore"):
+        report = SemanticVerifier([ContentRule()], unknown_policy=policy).verify(
+            root, _change("x = 1\n", bad)
+        )
+        assert not report.approved
+        assert report.findings[0].rule_id == "parse-error"
 
 
-def test_parse_error_in_unchanged_file_is_visible_and_policy_controlled(tmp_path):
+def test_pre_existing_parse_error_in_unrelated_file_does_not_block(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
     (root / "m.py").write_text("x = 1\n", encoding="utf-8")
     (root / "broken.py").write_text("def broken(:\n", encoding="utf-8")
     change = _change("x = 1\n", "x = 2\n")
 
-    blocked = SemanticVerifier([ContentRule()]).verify(root, change)
-    assert not blocked.approved
-    assert not blocked.complete
-    assert blocked.parse_errors[0]["introduced"] is False
-    assert blocked.preexisting
+    report = SemanticVerifier([ContentRule()]).verify(root, change)
+    assert report.approved, report.summary()
+    assert report.complete
+    assert report.parse_errors[0]["introduced"] is False
+    assert report.preexisting
+    assert any(f.rule_id == "parse-error" for f in report.preexisting)
 
-    warned = SemanticVerifier([ContentRule()], unknown_policy="warn").verify(root, change)
+
+def test_complete_rule_evidence_despite_irrelevant_parse_error(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "m.py").write_text("x = 1\n", encoding="utf-8")
+    (root / "broken.py").write_text("def broken(:\n", encoding="utf-8")
+    change = _change("x = 1\n", "x = 2\n")
+    rule = ForbiddenImportRule("layer", r"^m\.py$", r"app\.db")
+    report = SemanticVerifier([rule]).verify(root, change)
+    assert report.approved, report.summary()
+    assert report.rule_results[0]["before"] == "pass"
+    assert report.rule_results[0]["after"] == "pass"
+
+
+def test_pre_existing_parse_error_inside_rule_scope_is_unknown(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "m.py").write_text("x = 1\n", encoding="utf-8")
+    (root / "broken.py").write_text("def broken(:\n", encoding="utf-8")
+    change = _change("x = 1\n", "x = 2\n")
+    rule = ForbiddenImportRule("layer", r"^broken\.py$", r"app\.db")
+
+    blocked = SemanticVerifier([rule]).verify(root, change)
+    assert not blocked.approved
+    assert blocked.indeterminate
+    assert blocked.unknown
+    assert blocked.complete  # the change itself is complete; the rule is not
+
+    warned = SemanticVerifier([rule], unknown_policy="warn").verify(root, change)
     assert warned.approved
+    assert warned.unknown
+
+    ignored = SemanticVerifier([rule], unknown_policy="ignore").verify(root, change)
+    assert ignored.approved
+    assert not ignored.unknown
+    assert ignored.rule_results[0]["after"] == "unknown"
 
 
 def test_deterministic_ordering(tmp_path):

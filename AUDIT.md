@@ -2,12 +2,27 @@
 
 Date: 2026-10-22
 Baseline commit: `5adfea4`
-Implementation commit: `c4c0e26`
+0.3.0 implementation commit: `c4c0e26`
+0.3.1 follow-up base: `20a3251f86b51ade38a9690b7b97bd7ea6716785` (changes committed after this audit)
 Repository: https://github.com/dronpancholi/architecture-ai-cannot-see
 Branch: `main`
 Baseline tests: 36 passed; working tree clean at audit start.
 
 This report records what was inspected, changed, executed, and **not** verified. It does not claim a literal 10/10.
+
+## 0. Follow-up audit (0.3.1)
+
+The 0.3.0 audit below is retained as history. The follow-up found that comparing rules only by aggregate `PASS`/`FAIL` could hide a new violation whenever the same rule already failed. It also found that independent findings could collapse across files and that the parse/completeness policy was underspecified.
+
+| # | Follow-up finding | Fix |
+|---|---|---|
+| F-1 | A rule that failed before and after was classified wholesale as pre-existing, so a new forbidden import or a newly failing function was hidden by old debt. | Per-finding matching by `(canonical_path, semantic_key)`. Only matching old findings are pre-existing; unmatched after findings are introduced. |
+| F-2 | Stable identity used line numbers, so an unrelated line shift could turn debt into a "new" finding. | Keys exclude line numbers. File renames canonicalise the after path back to the old path. Function renames get a new key and fail closed (introduced). |
+| F-3 | Import, forbidden-call, and orphaned-call collection deduplicated by key across files, so the same violation in a second file disappeared. | Deduplicate by `(path, key)`. |
+| F-4 | Parse-error policy was implicit: every parse error made the report incomplete and the global block/warn/ignore switch applied uniformly. | New changed-file parse error is an introduced finding and always blocks; pre-existing unrelated error is diagnostic; pre-existing scoped error makes that rule `UNKNOWN`; global rules remain fail-closed. |
+| F-5 | CLI coverage was 70% and malformed-input, unsupported-file, and per-finding JSON paths were thin. | Expanded CLI tests to 95% module coverage and added per-finding API/CLI regressions. |
+
+The follow-up adds `tests/test_violation_level.py`, expands `tests/test_tristate.py` and `tests/test_cli.py`, exports `Violation`, adds per-rule violation counts, and updates CI with `pip-audit`. It does not change the historical finding descriptions in sections 1–6.
 
 ## 1. Audit findings
 
@@ -59,8 +74,8 @@ Command (`.venv`, Python 3.14.6):
 
 ```text
 .venv/bin/python -m pytest --cov=knowledge_surface --cov-report=term --cov-fail-under=85
-167 passed in 3.86s
-TOTAL 2516 statements, 319 missed, 87.32% coverage
+193 passed in 2.68s
+TOTAL 2626 statements, 264 missed, 89.95% coverage
 Required test coverage of 85% reached.
 ```
 
@@ -71,16 +86,17 @@ New test files and what they cover:
 | File | Focus |
 |---|---|
 | `test_paths_and_patch.py` | multi-file/hunk patches, renames, quoted paths, traversal/symlink rejection |
-| `test_tristate.py` | full before/after matrix, unknown policy, parse errors, ordering |
+| `test_tristate.py` | full before/after matrix, unknown policy, parse/completeness policy, ordering |
+| `test_violation_level.py` | per-finding matching, old+new violations in one file and across files, renames, duplicate functions, module scope |
 | `test_require_call.py` | owner scope, nested scope pruning, dominance, async, missing target |
 | `test_sandbox.py` | untrusted refusal, timeout, process-group kill, output bound, minimal env |
 | `test_agent_loop.py` | every terminal state, repeated revision, stale `before`, prompt bounds, path/JSON validation |
 | `test_representation.py` | schema version, duplicate IDs, determinism, code-only graph |
 | `test_extractors.py` | exclusions, parse failures, relative imports, ambiguity, dynamic imports, frameworks |
-| `test_cli.py` | exit codes 0/1/2/3, JSON output, input errors, drift gate |
+| `test_cli.py` | exit codes 0/1/2/3, per-finding JSON, malformed inputs, unsupported files, drift gate |
 | `test_benchmark_pins.py` | exact checkout, HEAD verification, anchor failure, target selection |
 
-Remote CI (GitHub Actions run `39786564650`) passed on Python 3.11, 3.12, and 3.13. CLI coverage is 70%, the lowest module.
+Remote CI (GitHub Actions run `39786564650`) passed on Python 3.11, 3.12, and 3.13 before the follow-up. That run does not cover the 0.3.1 changes; the new run is recorded after push. CLI coverage is 95%.
 
 ## 4. Security report
 
@@ -92,23 +108,28 @@ Verified controls:
 - **Model input:** prompt context is bounded and focused; common secret assignments are redacted; response JSON and paths are validated.
 - **No credentials** are stored in the repository; no obvious secret patterns were found in the diff.
 
+- **Dependency audit:** CI runs `pip-audit --skip-editable`; the local 0.3.1 environment reported no known vulnerabilities.
+- No automated live-LLM evaluation is claimed.
+
 Residual risk, stated plainly:
 
 - Behavioural execution is **process isolation, not a security sandbox**. A trusted snippet can still harm the host. Use a container/VM for hostile code.
 - Prompt redaction is a heuristic, not a guarantee against a hostile model provider.
-- No automated dependency-audit gate yet (`pip-audit` is on the roadmap).
-- CI remote execution and GitHub token permissions were not verified; a token without `workflow` scope can block workflow pushes.
+- A dependency audit reports known advisories at scan time; it is not a proof that dependencies are vulnerability-free.
+- The scheduled external workflow has not been run remotely in this audit; the local pinned run passed.
 
 ## 5. Benchmark report
 
-Controlled benchmark — 17 labelled scenarios:
+Controlled benchmark — 23 labelled scenarios:
 
 ```json
-{"scenarios": 17, "tp": 11, "fp": 0, "tn": 6, "fn": 0,
+{"scenarios": 23, "tp": 15, "fp": 0, "tn": 8, "fn": 0,
  "unknown": 0, "incomplete": 0,
  "precision": 1.0, "recall": 1.0, "f1": 1.0,
  "accuracy": 1.0, "false_positive_rate": 0.0}
 ```
+
+New scenarios cover old+new imports in one file, old+new imports across files, a renamed file with preserved debt, an unrelated pre-existing parse error, and `require_call` old+new plus repaired-old+new.
 
 External benchmark — 10 scenarios, 2 exact-pinned repositories:
 
@@ -117,31 +138,32 @@ External benchmark — 10 scenarios, 2 exact-pinned repositories:
 | `pallets/itsdangerous` | `672971d66a2ef9f85151e53283113f33d642dabd` | 5 | 3 | 2 | 0 | 0 | 0 |
 | `psf/requests` | `611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60` | 5 | 3 | 2 | 0 | 0 | 0 |
 
-Each checkout was fetched at the declared SHA and `git rev-parse HEAD` was verified. `benchmarks/EXTERNAL.md` records tool version 0.3.0.
+Each checkout was fetched at the declared SHA and `git rev-parse HEAD` was verified. `benchmarks/EXTERNAL.md` records tool version 0.3.1; the pinned external run was repeated after the follow-up.
 
-Agent experiment: baseline commits 6/17 safe changes; the verified loop commits 17/17. Average iterations 1.0 → 1.6. Verification overhead observed at 37.8–85.1 ms across runs (latest 60.4 ms) on one host. The revision policy is deterministic; this measures gating and convergence, not live-LLM repair quality.
+Agent experiment: baseline commits 8/23 safe changes; the verified loop commits 23/23. Average iterations 1.0 → 1.7. Latest average verification overhead 30.2 ms on one host. The revision policy is deterministic; this measures gating and convergence, not live-LLM repair quality.
 
-Scope caveat: 17 controlled scenarios and 10 external scenarios are evidence, not proof of general superiority. The controlled fixtures were designed alongside the rules; the external set is two repositories.
+Scope caveat: 23 controlled scenarios and 10 external scenarios are evidence, not proof of general superiority. The controlled fixtures were designed alongside the rules; the external set is two repositories.
 
 ## 6. Performance report
 
-`benchmarks/perf.py --iterations 20`, Python 3.14.6, one host:
+`benchmarks/perf.py --iterations 5`, Python 3.14.6, one host:
 
 | Operation | Median | p95 | Min | Max |
 |---|---|---|---|---|
-| Extractor only | 105.87 ms | 221.78 ms | 91.71 ms | 459.21 ms |
-| Full build | 276.73 ms | 395.33 ms | 242.96 ms | 555.49 ms |
-| Verify safe change | 20.60 ms | 25.82 ms | 17.41 ms | 25.98 ms |
-| Sandbox check | 78.24 ms | 84.98 ms | 44.22 ms | 86.69 ms |
+| Extractor only | 43.69 ms | 44.93 ms | 42.90 ms | 57.47 ms |
+| Full build | 155.24 ms | 158.49 ms | 149.57 ms | 160.78 ms |
+| Verify safe change | 6.52 ms | 6.79 ms | 6.56 ms | 7.69 ms |
+| Sandbox check | 27.26 ms | 46.89 ms | 25.43 ms | 48.57 ms |
 
-Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities, 1013 relationships. Earlier runs on the same host measured extractor 70–122 ms, full build 259–324 ms, verify 13–21 ms, sandbox 44–78 ms. The numbers are a regression baseline, not a comparison with other tools.
+Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities. This is a regression baseline, not a comparison with other tools.
 
 ## 7. API / compatibility report
 
-- Version: `0.2.0` → `0.3.0`.
-- New public exports: `Outcome`, `Finding`, `RequiredDecoratorRule`, `SCHEMA_VERSION`, `SchemaError`, `LoopState`, `LLMAgent`, `AgentError`, `Agent`.
-- `RuleResult.passed` remains for compatibility; `RuleResult.outcome` is now authoritative. `UNKNOWN` is not `PASS`.
-- `VerificationReport` adds `unknown`, `improvements`, `parse_errors`, `rule_results`, `complete`, `unknown_policy`; `approved` is false for unknown under the default `block` policy.
+- Version: `0.2.0` → `0.3.0` → `0.3.1`.
+- New public exports: `Outcome`, `Finding`, `Violation`, `RequiredDecoratorRule`, `SCHEMA_VERSION`, `SchemaError`, `LoopState`, `LLMAgent`, `AgentError`, `Agent`.
+- `RuleResult.passed` remains for compatibility; `RuleResult.outcome` is authoritative. `UNKNOWN` is not `PASS`. `RuleResult.violations` is additive and lists every finding.
+- `Finding` adds a stable `key`; `VerificationReport` adds `unknown`, `improvements`, `parse_errors`, `rule_results`, `complete`, `unknown_policy`. `rule_results` records before/after outcomes and violation counts.
+- Verification matches findings by `(canonical_path, key)`. `unknown_policy="ignore"` clears rule-level unknown findings from the approval decision but leaves `rule_results` and `parse_errors` visible.
 - `ChangeSet.from_patch(patch)` now requires a `root` for modified/deleted/renamed files. This is intentionally breaking: the previous behaviour produced an incomplete candidate. Pure-add patches still work without a root.
 - Untrusted `BehavioralRule` results are now `UNKNOWN` instead of executed.
 - Schema documents carry `schema_version: 1`; loading accepts missing version as `0` and rejects newer versions.
@@ -150,13 +172,13 @@ Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities
 ## 8. Remaining gaps
 
 1. No live-LLM evaluation. The loop is proven only with a deterministic `ScriptedAgent`.
-2. The scheduled external workflow has not been run remotely yet; the controlled CI workflow passed.
+2. The scheduled external workflow has not been run remotely; the local pinned run passed. The controlled CI workflow passed before the follow-up; the 0.3.1 run is recorded after push.
 3. External evidence is 10 scenarios over 2 repositories.
 4. Behavioural rules are not a security sandbox.
 5. Python is the only supported language.
-6. No dependency-audit gate.
-7. CLI coverage is 70%; the weakest tested surface.
-8. Performance was measured on one macOS host, not across platforms.
+6. Function renames are treated as introduced (fail-closed); the engine does not attempt semantic rename matching.
+7. Performance was measured on one macOS host, not across platforms.
+8. `pip-audit` is advisory-data dependent and runs in CI; it is not a proof of absence.
 
 ## 9. Acceptance gates
 
@@ -164,10 +186,10 @@ Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities
 |---|---|---|
 | A. Source integrity | **Pass** | Baseline `5adfea4` recorded; working tree inspected before edits; no history rewrite or force push; `git diff --check` clean; no unrelated deletion. |
 | B. Security | **Pass with residual risk** | Path containment tests, patch base requirement, sandbox controls, untrusted refusal, `SECURITY.md`; residual risk documented in §4. |
-| C. Verification correctness | **Pass** | 167 tests; tri-state matrix; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
-| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI passed on 3.11, 3.12, and 3.13 (run `39786564650`). |
+| C. Verification correctness | **Pass** | 193 tests; per-finding old+new regressions; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
+| D. Reproducibility | **Pass, with pending remote confirmation** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; prior GitHub Actions CI passed on 3.11, 3.12, and 3.13 (run `39786564650`), and a fresh 0.3.1 run is recorded after push. |
 | E. Evidence | **Pass, bounded** | `RESULTS.md`, `EXTERNAL.md`, `EVIDENCE.md`, `perf.json`, `docs/CLAIMS.md`; scope caveats stated. |
-| F. Hygiene | **Pass** | `ruff check .` clean; 87.32% coverage (gate 85%); `python -m build` produced 0.3.0 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
+| F. Hygiene | **Pass** | `ruff check .` clean; 89.95% coverage (gate 85%); `pip-audit` clean; `python -m build` produced 0.3.1 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
 | G. Documentation | **Pass** | README, architecture, verification, claims matrix, security, contributing, changelog, roadmap, templates aligned with implementation. |
 | H. Final review | **Pass** | Diff reviewed; secrets scan found no obvious credentials; final state recorded in git history. |
 
@@ -175,26 +197,28 @@ Cold full build: 719.48 ms, 8.84 MB peak (`tracemalloc`), 29 files, 417 entities
 
 | Dimension | Score | Basis |
 |---|---|---|
-| Verification correctness | 9/10 | Complete tri-state matrix, strict patches, conservative rules, 167 tests |
-| Security | 8/10 | Strong path/patch controls; process isolation is explicitly not a sandbox; no dependency audit |
-| Reproducibility | 9/10 | Exact pins, HEAD verification, deterministic output, wheel smoke test; remote CI unverified |
-| Evidence quality | 8/10 | Controlled + external + agent + performance evidence; small external sample |
-| Test depth | 8.5/10 | 87% coverage; CLI at 70% |
+| Verification correctness | 9.5/10 | Complete per-finding matrix, strict patches, conservative rules, 193 tests |
+| Security | 8.5/10 | Strong path/patch controls; dependency audit in CI; process isolation is explicitly not a sandbox |
+| Reproducibility | 9/10 | Exact pins, HEAD verification, deterministic output, wheel smoke test; fresh remote CI pending |
+| Evidence quality | 8.5/10 | 23 controlled + 10 external + agent + performance evidence; small external sample |
+| Test depth | 9/10 | 89.95% coverage; CLI at 95%; per-finding regressions |
 | Documentation / maintainability | 9/10 | Claims matrix, limits, templates, changelog, roadmap |
 | Production readiness | 6/10 | Alpha, Python-only, no live-LLM or dependency-audit gate |
 
-**Scoped overall: 8/10.** This is a materially stronger reference implementation than the baseline, with the main correctness and security traps closed and the evidence made reproducible. It is **not** a production-hardened verifier and **not** a 10/10: live-model behaviour, broader external evidence, real sandboxing, and cross-platform CI remain open.
+**Scoped overall: 8.5/10.** This is a materially stronger reference implementation than the baseline, with per-finding correctness, parse policy, dependency audit, and CLI coverage materially improved. It is **not** a production-hardened verifier and **not** a 10/10: live-model behaviour, broader external evidence, real sandboxing, and cross-platform performance remain open.
 
 ## 11. Final commands
 
 ```text
 .venv/bin/ruff check .                                      # All checks passed
-.venv/bin/python -m pytest --cov=... --cov-fail-under=85    # 167 passed, 87.32%
-.venv/bin/python benchmarks/runner.py                       # 17 scenarios, 0 FP/FN
+.venv/bin/python -m pytest --cov=... --cov-fail-under=85    # 193 passed, 89.95%
+.venv/bin/python benchmarks/runner.py                       # 23 scenarios, 0 FP/FN
 .venv/bin/python benchmarks/external.py                     # 10 scenarios, 0 FP/FN
-.venv/bin/python benchmarks/agent_experiment.py             # 6/17 -> 17/17
-.venv/bin/python benchmarks/perf.py --iterations 20         # recorded above
-.venv/bin/python -m build                                   # 0.3.0 sdist + wheel
+.venv/bin/python benchmarks/agent_experiment.py             # 8/23 -> 23/23
+.venv/bin/python benchmarks/perf.py --iterations 5           # recorded above
+.venv/bin/pip-audit --skip-editable                         # no known vulnerabilities
+.venv/bin/python -m build                                   # 0.3.1 sdist + wheel
 # fresh venv: pip install dist/*.whl && ks --help             # passed
-# GitHub Actions: CI run 39786564650                            # 3.11/3.12/3.13 passed
+# GitHub Actions: CI run 39786564650                            # prior run, 3.11/3.12/3.13
+# 0.3.1 remote run: recorded after push
 ```

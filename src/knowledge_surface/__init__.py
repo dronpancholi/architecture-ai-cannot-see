@@ -33,6 +33,7 @@ from .verification.rules import (
     RequiredDecoratorRule,
     Rule,
     TypeAnnotationRule,
+    Violation,
 )
 
 __all__ = [
@@ -44,8 +45,8 @@ __all__ = [
     "ChangeSet", "FileChange", "SemanticVerifier", "VerificationReport",
     "Allowlist", "BehavioralRule", "ForbiddenCallRule", "ForbiddenImportRule",
     "NoMutableDefaultRule", "RequiredDecoratorRule", "RequireCallRule", "Rule",
-    "TypeAnnotationRule", "Outcome", "Finding", "SCHEMA_VERSION", "SchemaError",
-    "LoopState", "LLMAgent", "AgentError", "Agent",
+    "TypeAnnotationRule", "Outcome", "Violation", "Finding", "SCHEMA_VERSION",
+    "SchemaError", "LoopState", "LLMAgent", "AgentError", "Agent",
     "Baseline", "FeedbackLoop", "ScriptedAgent",
 ]
-__version__ = "0.3.0"
+__version__ = "0.3.1"

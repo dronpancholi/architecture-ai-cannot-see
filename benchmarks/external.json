@@ -25,6 +25,7 @@
           "confidence": "known",
           "evidence": "src/itsdangerous/signer.py:24 verify_signature does not call compare_digest",
           "introduced": true,
+          "key": "require::fn::SigningAlgorithm::verify_signature#0::compare_digest",
           "line": 24,
           "message": "src/itsdangerous/signer.py:24 verify_signature does not call compare_digest",
           "path": "src/itsdangerous/signer.py",
@@ -52,6 +53,7 @@
           "confidence": "known",
           "evidence": "src/itsdangerous/signer.py:6 imports pickle",
           "introduced": true,
+          "key": "import::pickle",
           "line": 6,
           "message": "signer must not import pickle",
           "path": "src/itsdangerous/signer.py",
@@ -89,6 +91,7 @@
           "confidence": "known",
           "evidence": "src/itsdangerous/serializer.py:5 imports pickle",
           "introduced": true,
+          "key": "import::pickle",
           "line": 5,
           "message": "serializer must not import pickle (unsafe deserialization)",
           "path": "src/itsdangerous/serializer.py",
@@ -126,6 +129,7 @@
           "confidence": "known",
           "evidence": "src/requests/auth.py:80 calls eval",
           "introduced": true,
+          "key": "call::fn::AuthBase::unsafe#0::eval",
           "line": 80,
           "message": "unsafe calls forbidden eval",
           "path": "src/requests/auth.py",
@@ -153,6 +157,7 @@
           "confidence": "known",
           "evidence": "src/requests/sessions.py:12 imports pickle",
           "introduced": true,
+          "key": "import::pickle",
           "line": 12,
           "message": "sessions must not import pickle",
           "path": "src/requests/sessions.py",
@@ -180,6 +185,7 @@
           "confidence": "known",
           "evidence": "src/requests/sessions.py:11 imports subprocess",
           "introduced": true,
+          "key": "import::subprocess",
           "line": 11,
           "message": "sessions must not shell out",
           "path": "src/requests/sessions.py",
@@ -259,5 +265,5 @@
       "target": "psf/requests"
     }
   ],
-  "tool_version": "0.3.0"
+  "tool_version": "0.3.1"
 }

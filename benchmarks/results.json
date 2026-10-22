@@ -1,9 +1,9 @@
 {
   "aggregate": {
-    "scenarios": 17,
-    "tp": 11,
+    "scenarios": 23,
+    "tp": 15,
     "fp": 0,
-    "tn": 6,
+    "tn": 8,
     "fn": 0,
     "unknown": 0,
     "incomplete": 0,
@@ -19,14 +19,32 @@
       "category": "introduced-violation",
       "expected_blocked": true,
       "predicted_blocked": true,
-      "summary": "BLOCKED: 1 introduced violation(s)",
+      "summary": "BLOCKED: 2 introduced violation(s)",
       "findings": [
         {
           "rule_id": "layer-route-no-db",
+          "key": "import::app.db",
           "path": "app/routes/orders.py",
           "line": 3,
           "message": "routes must not import the database layer directly",
-          "evidence": "app/routes/orders.py:3 imports app.db.Database; app/routes/orders.py:3 imports app.db",
+          "evidence": "app/routes/orders.py:3 imports app.db",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "pass",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        },
+        {
+          "rule_id": "layer-route-no-db",
+          "key": "import::app.db.Database",
+          "path": "app/routes/orders.py",
+          "line": 3,
+          "message": "routes must not import the database layer directly",
+          "evidence": "app/routes/orders.py:3 imports app.db.Database",
           "suggestion": "Remove the forbidden import or route through an allowed boundary.",
           "severity": "error",
           "status": "introduced",
@@ -60,6 +78,7 @@
       "findings": [
         {
           "rule_id": "service-authorize-first",
+          "key": "require::fn::OrderService::place#0::authorize",
           "path": "app/services/orders.py",
           "line": 10,
           "message": "app/services/orders.py:10 authorize does not dominate insert",
@@ -97,6 +116,7 @@
       "findings": [
         {
           "rule_id": "no-orphaned-calls",
+          "key": "orphan::fn::OrderService::place#0::insert",
           "path": "app/services/orders.py",
           "line": 12,
           "message": "place still calls deleted function insert",
@@ -120,8 +140,174 @@
       "category": "preexisting-debt",
       "expected_blocked": false,
       "predicted_blocked": false,
-      "summary": "APPROVED (2 rules, 1 pre-existing)",
+      "summary": "APPROVED (2 rules, 2 pre-existing)",
       "findings": [],
+      "unknown": 0,
+      "complete": true
+    },
+    {
+      "scenario": "layer-existing-plus-new-import-same-file",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 2 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "layer-route-no-db-cache",
+          "key": "import::app.cache",
+          "path": "app/routes/legacy.py",
+          "line": 2,
+          "message": "routes must not import the database or cache layer directly",
+          "evidence": "app/routes/legacy.py:2 imports app.cache",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "fail",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        },
+        {
+          "rule_id": "layer-route-no-db-cache",
+          "key": "import::app.cache.Cache",
+          "path": "app/routes/legacy.py",
+          "line": 2,
+          "message": "routes must not import the database or cache layer directly",
+          "evidence": "app/routes/legacy.py:2 imports app.cache.Cache",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "fail",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "unknown": 0,
+      "complete": true
+    },
+    {
+      "scenario": "layer-existing-plus-new-import-other-file",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 2 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "layer-route-no-db",
+          "key": "import::app.db",
+          "path": "app/routes/orders.py",
+          "line": 3,
+          "message": "routes must not import the database layer directly",
+          "evidence": "app/routes/orders.py:3 imports app.db",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "fail",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        },
+        {
+          "rule_id": "layer-route-no-db",
+          "key": "import::app.db.Database",
+          "path": "app/routes/orders.py",
+          "line": 3,
+          "message": "routes must not import the database layer directly",
+          "evidence": "app/routes/orders.py:3 imports app.db.Database",
+          "suggestion": "Remove the forbidden import or route through an allowed boundary.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "fail",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "unknown": 0,
+      "complete": true
+    },
+    {
+      "scenario": "layer-rename-preexisting-debt",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (1 rules, 2 pre-existing)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
+    },
+    {
+      "scenario": "layer-preexisting-parse-error-unrelated",
+      "category": "safe-refactor",
+      "expected_blocked": false,
+      "predicted_blocked": false,
+      "summary": "APPROVED (1 rules, 1 pre-existing)",
+      "findings": [],
+      "unknown": 0,
+      "complete": true
+    },
+    {
+      "scenario": "auth-existing-plus-new-failing-function",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "notify-authorize",
+          "key": "require::fn::::notify_bulk#0::authorize",
+          "path": "auth/notify.py",
+          "line": 4,
+          "message": "auth/notify.py:4 notify_bulk does not call authorize",
+          "evidence": "auth/notify.py:4 notify_bulk does not call authorize",
+          "suggestion": "Call authorize before the protected operation.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "fail",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
+      "unknown": 0,
+      "complete": true
+    },
+    {
+      "scenario": "auth-repaired-old-plus-new-failing-function",
+      "category": "introduced-violation",
+      "expected_blocked": true,
+      "predicted_blocked": true,
+      "summary": "BLOCKED: 1 introduced violation(s)",
+      "findings": [
+        {
+          "rule_id": "notify-authorize",
+          "key": "require::fn::::notify_bulk#0::authorize",
+          "path": "auth/notify.py",
+          "line": 5,
+          "message": "auth/notify.py:5 notify_bulk does not call authorize",
+          "evidence": "auth/notify.py:5 notify_bulk does not call authorize",
+          "suggestion": "Call authorize before the protected operation.",
+          "severity": "error",
+          "status": "introduced",
+          "introduced": true,
+          "before": "fail",
+          "after": "fail",
+          "confidence": "known",
+          "suppressed": false,
+          "suppression_reason": ""
+        }
+      ],
       "unknown": 0,
       "complete": true
     },
@@ -134,6 +320,7 @@
       "findings": [
         {
           "rule_id": "delete-authorize",
+          "key": "require::fn::AccountService::delete_account#0::authorize",
           "path": "auth/service.py",
           "line": 10,
           "message": "auth/service.py:10 delete_account does not call authorize",
@@ -161,6 +348,7 @@
       "findings": [
         {
           "rule_id": "transfer-authorize",
+          "key": "require::fn::AccountService::transfer#0::authorize",
           "path": "auth/service.py",
           "line": 14,
           "message": "auth/service.py:14 transfer does not call authorize",
@@ -198,10 +386,11 @@
       "findings": [
         {
           "rule_id": "no-mutable-default",
+          "key": "mutable::fn::AccountService::log#0::entries",
           "path": "auth/service.py",
           "line": 18,
-          "message": "functions must not use mutable default arguments",
-          "evidence": "auth/service.py:18 log mutable default",
+          "message": "auth/service.py:18 log mutable default for entries",
+          "evidence": "auth/service.py:18 log(entries=...)",
           "suggestion": "Use None as the default and create the container inside the function.",
           "severity": "error",
           "status": "introduced",
@@ -225,10 +414,11 @@
       "findings": [
         {
           "rule_id": "public-annotated",
+          "key": "annotation::fn::AccountService::ping#0",
           "path": "auth/service.py",
           "line": 18,
-          "message": "public functions must be fully annotated",
-          "evidence": "auth/service.py:18 ping missing annotations",
+          "message": "auth/service.py:18 ping missing annotations",
+          "evidence": "auth/service.py:18 ping missing return=True args=['actor']",
           "suggestion": "Add parameter and return type annotations.",
           "severity": "error",
           "status": "introduced",
@@ -252,11 +442,12 @@
       "findings": [
         {
           "rule_id": "non-negative-total",
+          "key": "behavior::non-negative-total",
           "path": "",
           "line": 0,
           "message": "behavioural violation: TypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
-          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-qm6blvow/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
-          "suggestion": "",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-kjq0910v/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-kjq0910v/_ks_behavior_check.py\", line 7, in check\n    t = total([(Money(Decimal(\"10\")), 1)], discount=Decimal(\"20\"))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-kjq0910v/pricing/engine.py\", line 15, in total\n    acc = acc.plus(line_total(price, qty))\n  File \"/private/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-kjq0910v/pricing/money.py\", line 15, in plus\n    return Money(self.amount + other.amount, self.currency)\n                 ~~~~~~~~~~~~^~~~~~~~~~~~~~\nTypeError: unsupported operand type(s) for +: 'decimal.Decimal' and 'float'",
+          "suggestion": "Make the behavioural check pass.",
           "severity": "error",
           "status": "introduced",
           "introduced": true,
@@ -268,6 +459,7 @@
         },
         {
           "rule_id": "no-float",
+          "key": "call::fn::::line_total#0::float",
           "path": "pricing/engine.py",
           "line": 9,
           "message": "line_total calls forbidden float",
@@ -295,11 +487,12 @@
       "findings": [
         {
           "rule_id": "non-negative-total",
+          "key": "behavior::non-negative-total",
           "path": "",
           "line": 0,
           "message": "behavioural violation: AssertionError: negative total: -10",
-          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-bts8rutu/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-bts8rutu/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
-          "suggestion": "",
+          "evidence": "Traceback (most recent call last):\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-exk5w4we/_ks_behavior_check.py\", line 12, in <module>\n    check()\n    ~~~~~^^\n  File \"/var/folders/cl/39hd223n3sz4rjxzj_p5zr180000gn/T/ks-behavior-exk5w4we/_ks_behavior_check.py\", line 8, in check\n    assert t.amount >= 0, f\"negative total: {t.amount}\"\n           ^^^^^^^^^^^^^\nAssertionError: negative total: -10",
+          "suggestion": "Make the behavioural check pass.",
           "severity": "error",
           "status": "introduced",
           "introduced": true,
@@ -332,6 +525,7 @@
       "findings": [
         {
           "rule_id": "registry-no-importlib",
+          "key": "import::importlib",
           "path": "host/registry.py",
           "line": 3,
           "message": "registry must delegate dynamic imports to PluginLoader",
@@ -359,6 +553,7 @@
       "findings": [
         {
           "rule_id": "registry-no-eval",
+          "key": "call::fn::Registry::unsafe#0::eval",
           "path": "host/registry.py",
           "line": 12,
           "message": "unsafe calls forbidden eval",

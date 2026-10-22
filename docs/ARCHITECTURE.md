@@ -19,9 +19,9 @@ Mirrors the whitepaper's three reasoning layers, plus the verification and agent
 
 - `change.py` — `ChangeSet` / `FileChange`, strict unified-diff application against a base tree, add/delete/rename/copy, multi-file/multi-hunk support, after-tree materialization.
 - `paths.py` — shared path normalization and containment checks. Every path from a diff, rule, or model passes through this module before touching the filesystem.
-- `rules.py` — rule types: `ForbiddenImportRule`, `ForbiddenCallRule`, `RequireCallRule` (owner-scoped, missing-target failure, nested-scope pruning, dominance), `RequiredDecoratorRule`, `TypeAnnotationRule`, `NoMutableDefaultRule`, `BehavioralRule`, `CustomRule`, `Allowlist`. Results are `PASS` / `FAIL` / `UNKNOWN`.
+- `rules.py` — rule types: `ForbiddenImportRule`, `ForbiddenCallRule`, `RequireCallRule` (owner-scoped, missing-target failure, nested-scope pruning, dominance), `RequiredDecoratorRule`, `TypeAnnotationRule`, `NoMutableDefaultRule`, `BehavioralRule`, `CustomRule`, `Allowlist`. Results are `PASS` / `FAIL` / `UNKNOWN`; built-in rules also return every independent `Violation` with a stable semantic key.
 - `sandbox.py` — behavioral-rule process isolation: minimal environment, timeout, process-group kill, POSIX rlimits, bounded output, untrusted refusal by default.
-- `engine.py` — `SemanticVerifier`: evaluates rules on before and after trees; classifies introduced / pre-existing / unknown / improvement; applies `unknown_policy`; reports parse errors separately.
+- `engine.py` — `SemanticVerifier`: evaluates rules on before and after trees; matches findings by `(canonical_path, key)` and classifies each as introduced / pre-existing / unknown / improvement; applies `unknown_policy`; reports parse errors as introduced or pre-existing diagnostics.
 - `feedback.py` — machine-readable and Markdown feedback for an agent or human, including unknown and parse-error feedback.
 - `config.py` — JSON rule config with constructor validation and clear errors.
 

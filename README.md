@@ -9,7 +9,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-167%20passing-brightgreen.svg)](#whats-proven)
+[![Tests](https://img.shields.io/badge/tests-193%20passing-brightgreen.svg)](#whats-proven)
 [![Benchmark](https://img.shields.io/badge/benchmark-100%25%20precision%20%2F%20recall-brightgreen.svg)](./benchmarks/RESULTS.md)
 [![External](https://img.shields.io/badge/external%20repos-2%20real%20projects-blueviolet.svg)](./benchmarks/EXTERNAL.md)
 [![Whitepaper](https://img.shields.io/badge/whitepaper-PDF-red.svg)](./docs/whitepaper.pdf)
@@ -118,7 +118,7 @@ The Knowledge Surface is the structured, queryable representation of **both** �
 | Call graph, dynamic imports (`importlib`, f-strings), framework decorators | `extractors/deep.py` | ✅ |
 | **Semantic rule engine** (not scope-touching) | `verification/` | ✅ |
 | **Tri-state results** (`PASS` / `FAIL` / `UNKNOWN`); unknown never counts as a pass | `verification/engine.py` | ✅ |
-| **Regression-only blocking** (pre-existing debt never blocks) | `verification/engine.py` | ✅ |
+| **Per-finding regression blocking** (old debt never hides a new violation) | `verification/engine.py` | ✅ |
 | **Behavioural invariants** executed in a bounded subprocess; untrusted snippets refused by default | `verification/sandbox.py` | ✅ |
 | **False-positive control** via allowlist + regression logic | `verification/rules.py` | ✅ |
 | **Benchmark** with precision / recall / FPR | `benchmarks/` | ✅ |
@@ -145,8 +145,10 @@ sequenceDiagram
     V->>C: evaluate rules
     alt passed before, fails after
         V-->>A: BLOCK + actionable fix
-    else failed before, fails after
+    else failed before, same finding still fails
         V-->>A: ALLOW + pre-existing debt report
+    else failed before, different finding fails after
+        V-->>A: BLOCK + new finding
     else before or after is unknown
         V-->>A: INDETERMINATE + block/warn/ignore decision
     else passes after
@@ -156,16 +158,25 @@ sequenceDiagram
 
 Rules are evaluated against the **before** and **after** trees. A finding blocks only when it is **introduced**. Legacy debt is recorded, never weaponized against an unrelated change. Safe refactors produce zero findings. The full engineering audit, including verified/unverified items and residual risk, is in [`AUDIT.md`](./AUDIT.md).
 
-Every result is **tri-state**:
+Every result is **tri-state**, and matching is **per finding**, not per rule:
 
 | Before | After | Classification |
 |---|---|---|
-| `PASS` | `FAIL` | introduced (blocks) |
-| `FAIL` | `FAIL` | pre-existing (recorded) |
+| `PASS` | `FAIL` | each after finding is introduced (blocks) |
+| `FAIL` | `FAIL` | a finding with the same `(path, key)` is pre-existing; an unmatched after finding is introduced |
+| `FAIL` | `PASS` | each old finding is an improvement |
 | `UNKNOWN` | `FAIL` | unknown (never pre-existing) |
 | any | `UNKNOWN` | unknown (never a pass) |
 
+The finding key is semantic and stable across line shifts: `(canonical_path, semantic_key)`. A file rename maps the after path back to the old path, so unchanged debt stays pre-existing. A renamed function gets a new key and is treated as **introduced** (fail-closed), not silently inherited.
+
 `unknown` is a first-class report section and blocks by default (`--unknown-policy block`). A rule that targets a missing function fails unless the rule is explicitly optional (`required: false`).
+
+Parse policy is deliberate:
+
+- A **new** parse error in a changed file is an introduced finding and blocks regardless of `--unknown-policy warn|ignore`.
+- A **pre-existing** parse error outside a rule's scope is a diagnostic only; a scoped rule can still return complete evidence.
+- A pre-existing parse error **inside** a rule's scope makes that rule `UNKNOWN`; global-scope rules can therefore block an unrelated change. This is fail-closed, not an absolute no-blocking guarantee.
 
 | Rule | What it proves |
 |---|---|
@@ -183,13 +194,13 @@ Every result is **tri-state**:
 
 ## Measured Evidence
 
-### Controlled benchmark — 17 labelled scenarios
+### Controlled benchmark — 23 labelled scenarios
 
 | Metric | Value |
 |---|---|
-| True positives | 11 |
+| True positives | 15 |
 | False positives | 0 |
-| True negatives | 6 |
+| True negatives | 8 |
 | False negatives | 0 |
 | Precision | **100%** |
 | Recall | **100%** |
@@ -198,7 +209,7 @@ Every result is **tri-state**:
 
 Full breakdown: [`benchmarks/RESULTS.md`](./benchmarks/RESULTS.md).
 
-The scenarios include introduced violations (layer breaks, missing authorization, mutable defaults, float regressions, dynamic-import escapes) and safe refactors (renames, docstrings, added methods) plus a pre-existing-debt case.
+The scenarios include introduced violations (layer breaks, missing authorization, mutable defaults, float regressions, dynamic-import escapes), old debt plus a new violation in the same and different files, repaired debt plus a new violation, a debt-preserving file rename, and safe refactors (renames, docstrings, added methods).
 
 ### Agent experiment — baseline vs. verification loop
 
@@ -206,9 +217,9 @@ Ground truth is the scenario label, not the verifier's own verdict.
 
 | Metric | Baseline | With loop |
 |---|---|---|
-| Changes that are actually safe | 6/17 (35%) | **17/17 (100%)** |
-| Unsafe changes committed | 11/17 | **0/17** |
-| Average verification overhead | 0 ms | ~40 ms (37–85 ms across runs on one host) |
+| Changes that are actually safe | 8/23 (35%) | **23/23 (100%)** |
+| Unsafe changes committed | 15/23 | **0/23** |
+| Average verification overhead | 0 ms | ~30 ms (latest 30.2 ms on one host) |
 
 Full breakdown: [`benchmarks/EVIDENCE.md`](./benchmarks/EVIDENCE.md).
 
@@ -266,11 +277,13 @@ Each rejected attempt produces a machine-readable `FeedbackItem`:
 ```json
 {
   "rule": "delete-auth",
+  "key": "require::fn::AccountService::delete_account#0::authorize",
   "file": "auth/service.py",
   "line": 12,
   "problem": "delete_account does not call authorize",
   "evidence": "auth/service.py:12 delete_account does not call authorize",
   "fix": "Call authorize before the protected operation.",
+  "status": "introduced",
   "blocking": true
 }
 ```
@@ -338,7 +351,7 @@ ks build examples/demo_codebase_v2 -o after.json
 ks drift before.json after.json
 ```
 
-Exit codes: `0` approved, `1` policy rejection, `2` input error, `3` indeterminate under a blocking policy. Add `--unknown-policy warn` to record unknown results without failing the gate, and `--json-out report.json` for machine-readable output.
+Exit codes: `0` approved, `1` policy rejection, `2` input error, `3` indeterminate under a blocking policy. Add `--unknown-policy warn` to record unknown results without failing the gate, and `--json-out report.json` for machine-readable output. A newly introduced parse error blocks even under `warn` or `ignore`.
 
 ---
 
@@ -381,13 +394,14 @@ ks report <ks.json>                           Full architectural report
 
 ## What's Proven
 
-167 tests, all passing (87% statement coverage under `pytest-cov`).
+193 tests, all passing (89.95% statement coverage under `pytest-cov`; CLI module 95%).
 
 | Test file | What it proves |
 |-----------|----------------|
 | `tests/test_verification.py` | Semantic rules, regression-only blocking, allowlist, behavioural checks, patch parsing |
 | `tests/test_paths_and_patch.py` | Multi-file/multi-hunk patches, renames, quoted paths, traversal and symlink escape rejection |
-| `tests/test_tristate.py` | The complete before/after matrix, unknown policy, parse errors, deterministic ordering |
+| `tests/test_tristate.py` | The complete before/after matrix, unknown policy, parse/completeness policy, deterministic ordering |
+| `tests/test_violation_level.py` | Per-finding matching: old debt plus a new violation, cross-file findings, renames, duplicate functions, module scope |
 | `tests/test_require_call.py` | Scope pruning, conditional dominance, async, owner scoping, missing targets |
 | `tests/test_sandbox.py` | Untrusted refusal, timeout, process-group kill, bounded output, minimal environment |
 | `tests/test_agent_loop.py` | Loop terminal states, repeated revisions, stale `before`, prompt bounds, path/JSON validation |
@@ -397,7 +411,7 @@ ks report <ks.json>                           Full architectural report
 | `tests/test_benchmark_pins.py` | Exact-pin checkout, HEAD verification, anchor failures, target selection |
 | `tests/test_deep_extractors.py`, `test_entities.py`, `test_knowledge_surface.py` | Deep edges, graph reasoning, serialization |
 | `tests/test_consistency.py`, `test_propagation.py`, `test_drift.py`, `test_whitepaper_claims.py` | Reasoning, propagation, drift, whitepaper claims |
-| `tests/test_cli.py` | CLI exit codes, JSON output, input errors, drift gate |
+| `tests/test_cli.py` | CLI exit codes, malformed inputs, JSON output, per-finding reports, drift gate |
 
 ```bash
 pytest -q
@@ -440,7 +454,7 @@ python benchmarks/perf.py           # local performance baseline
 ├── examples/                     # demo codebases, rules, patch
 ├── .github/workflows/            # CI + scheduled external benchmark
 ├── SECURITY.md · CONTRIBUTING.md · CHANGELOG.md · ROADMAP.md
-└── tests/                        # 167 tests
+└── tests/                        # 193 tests
 ```
 
 ---
@@ -451,10 +465,10 @@ The whitepaper is explicit that this problem is unsolved. So is this implementat
 
 - **Structural rules are not full data flow.** A violation hidden behind dynamic dispatch may be reported as `UNKNOWN` rather than proven. Call-graph resolution is conservative: ambiguous or locally shadowed names are skipped.
 - **Behavioural rules execute code.** They run in a temp dir with a minimal environment, wall-clock timeout, process-group kill, output bound, and POSIX rlimits — but this is process isolation, not a security sandbox. Untrusted snippets are refused unless `trusted: true` or `allow_untrusted_behavioral=True` is set deliberately inside real isolation.
-- **Unknown is not proof.** Parse failures, ambiguous call targets, and unresolved dynamic imports are reported as `UNKNOWN` and block by default. Use `--unknown-policy warn` only when you accept an incomplete gate.
+- **Unknown is not proof.** Parse failures, ambiguous call targets, and unresolved dynamic imports are reported as `UNKNOWN` and block by default. `--unknown-policy warn` accepts rule-level unknowns but still blocks a new parse error; `ignore` drops rule-level unknowns from the approval decision while leaving `rule_results` and `parse_errors` visible. Use either only when you accept an incomplete gate.
 - **No real-LLM result is claimed.** The loop is tested with a deterministic `ScriptedAgent`; `LLMAgent` validates and bounds prompts, but a live model run needs credentials and is not part of the measured evidence.
 - **Rules must be declared.** The engine cannot invent an invariant that was never written anywhere. That is the tacit-knowledge problem.
-- **The benchmark is controlled.** The 17 scenarios are designed to isolate specific rules. The external benchmark adds real-world signal at pinned commits, but ten scenarios over two repositories is not a proof of general superiority.
+- **The benchmark is controlled.** The 23 scenarios are designed to isolate specific rules. The external benchmark adds real-world signal at pinned commits, but ten scenarios over two repositories is not a proof of general superiority.
 - **The agent experiment uses a deterministic repair.** It proves the loop gates and converges; it does not prove an arbitrary LLM will repair well.
 - **Python only.** The AST extractors target Python; other languages need new extractors.
 

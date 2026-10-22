@@ -4,118 +4,160 @@
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 21.8
+    "verification_ms": 15.1
   },
   {
     "scenario": "layer-safe-rename",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 9.76
+    "verification_ms": 7.13
   },
   {
     "scenario": "layer-violation-auth-order",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 21.18
+    "verification_ms": 14.99
   },
   {
     "scenario": "layer-safe-add-method",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 11.2
+    "verification_ms": 7.95
   },
   {
     "scenario": "layer-orphaned-calls",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 26.42
+    "verification_ms": 15.91
   },
   {
     "scenario": "layer-preexisting-debt",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 12.08
+    "verification_ms": 7.63
+  },
+  {
+    "scenario": "layer-existing-plus-new-import-same-file",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 14.9
+  },
+  {
+    "scenario": "layer-existing-plus-new-import-other-file",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 15.62
+  },
+  {
+    "scenario": "layer-rename-preexisting-debt",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 7.09
+  },
+  {
+    "scenario": "layer-preexisting-parse-error-unrelated",
+    "baseline_safe": true,
+    "loop_safe": true,
+    "iterations": 1,
+    "verification_ms": 6.88
+  },
+  {
+    "scenario": "auth-existing-plus-new-failing-function",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 8.75
+  },
+  {
+    "scenario": "auth-repaired-old-plus-new-failing-function",
+    "baseline_safe": false,
+    "loop_safe": true,
+    "iterations": 2,
+    "verification_ms": 8.56
   },
   {
     "scenario": "auth-missing-authorize-delete",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 14.32
+    "verification_ms": 10.14
   },
   {
     "scenario": "auth-missing-authorize-transfer",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 14.63
+    "verification_ms": 9.9
   },
   {
     "scenario": "auth-safe-logging",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 7.44
+    "verification_ms": 5.05
   },
   {
     "scenario": "auth-mutable-default",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 14.0
+    "verification_ms": 10.41
   },
   {
     "scenario": "auth-missing-annotation",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 15.83
+    "verification_ms": 10.51
   },
   {
     "scenario": "pricing-float-regression",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 325.92
+    "verification_ms": 200.21
   },
   {
     "scenario": "pricing-negative-total",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 337.35
+    "verification_ms": 198.55
   },
   {
     "scenario": "pricing-safe-refactor",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 165.82
+    "verification_ms": 103.72
   },
   {
     "scenario": "plugin-registry-importlib",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 12.13
+    "verification_ms": 7.0
   },
   {
     "scenario": "plugin-registry-eval",
     "baseline_safe": false,
     "loop_safe": true,
     "iterations": 2,
-    "verification_ms": 12.19
+    "verification_ms": 6.53
   },
   {
     "scenario": "plugin-safe-logging",
     "baseline_safe": true,
     "loop_safe": true,
     "iterations": 1,
-    "verification_ms": 5.52
+    "verification_ms": 3.17
   }
 ]

@@ -70,6 +70,34 @@ def layered_rules() -> list[Rule]:
     ]
 
 
+def route_rules() -> list[Rule]:
+    """Only the scoped route rule, for parse-error and rename scenarios."""
+    return [
+        ForbiddenImportRule(
+            "layer-route-no-db", r"app/routes/.*\.py$", r"app\.db",
+            "routes must not import the database layer directly",
+        ),
+    ]
+
+
+def notify_rules() -> list[Rule]:
+    return [
+        RequireCallRule(
+            "notify-authorize", r"^notify", "authorize", before_call="delete",
+            description="notifications must authorize before deleting",
+        ),
+    ]
+
+
+def route_cache_rules() -> list[Rule]:
+    return [
+        ForbiddenImportRule(
+            "layer-route-no-db-cache", r"app/routes/.*\.py$", r"app\.(db|cache)",
+            "routes must not import the database or cache layer directly",
+        ),
+    ]
+
+
 def auth_rules() -> list[Rule]:
     return [
         RequireCallRule(
@@ -184,6 +212,86 @@ def scenarios() -> list[Scenario]:
         ),
         setup=lambda r: (r / "app/routes/audit.py").write_text(
             "from app.db import Database\n\n\ndef ping(db: Database) -> None:\n    db.execute('select 1')\n"
+        ),
+    ))
+
+    # Regression-level scenarios: an old finding must never hide a new one.
+    out.append(Scenario(
+        "layer-existing-plus-new-import-same-file", "layered_webapp",
+        "introduced-violation", True,
+        route_cache_rules(),
+        lambda r: _modify(
+            r, "app/routes/legacy.py",
+            "from app.db import Database\n",
+            "from app.db import Database\nfrom app.cache import Cache\n",
+        ),
+        setup=lambda r: (r / "app/routes/legacy.py").write_text(
+            "from app.db import Database\n\n\ndef legacy(db: Database) -> None:\n    db.execute('select 1')\n"
+        ),
+    ))
+    out.append(Scenario(
+        "layer-existing-plus-new-import-other-file", "layered_webapp",
+        "introduced-violation", True,
+        route_rules(),
+        lambda r: _modify(
+            r, "app/routes/orders.py",
+            "from app.services.orders import OrderService",
+            "from app.db import Database\nfrom app.services.orders import OrderService",
+        ),
+        setup=lambda r: (r / "app/routes/legacy.py").write_text(
+            "from app.db import Database\n\n\ndef legacy(db: Database) -> None:\n    db.execute('select 1')\n"
+        ),
+    ))
+    out.append(Scenario(
+        "layer-rename-preexisting-debt", "layered_webapp", "safe-refactor", False,
+        route_rules(),
+        lambda r: ChangeSet(files=[FileChange(
+            path="app/routes/legacy_moved.py",
+            old_path="app/routes/legacy.py",
+            before=_read(r, "app/routes/legacy.py"),
+            after=_read(r, "app/routes/legacy.py"),
+        )]),
+        setup=lambda r: (r / "app/routes/legacy.py").write_text(
+            "from app.db import Database\n\n\ndef legacy(db: Database) -> None:\n    db.execute('select 1')\n"
+        ),
+    ))
+    out.append(Scenario(
+        "layer-preexisting-parse-error-unrelated", "layered_webapp",
+        "safe-refactor", False,
+        route_rules(),
+        lambda r: _modify(
+            r, "app/services/orders.py",
+            '"""Order service (business layer)."""',
+            '"""Order service (business layer)."""\n\n# audit: touched',
+        ),
+        setup=lambda r: (r / "broken.py").write_text("def broken(:\n"),
+    ))
+    out.append(Scenario(
+        "auth-existing-plus-new-failing-function", "auth_service",
+        "introduced-violation", True,
+        notify_rules(),
+        lambda r: _modify(
+            r, "auth/notify.py",
+            "def notify(repo):\n    repo.delete(\"old\")",
+            "def notify(repo):\n    repo.delete(\"old\")\n\n"
+            "def notify_bulk(repo):\n    repo.delete(\"new\")",
+        ),
+        setup=lambda r: (r / "auth/notify.py").write_text(
+            "def notify(repo):\n    repo.delete(\"old\")\n"
+        ),
+    ))
+    out.append(Scenario(
+        "auth-repaired-old-plus-new-failing-function", "auth_service",
+        "introduced-violation", True,
+        notify_rules(),
+        lambda r: _modify(
+            r, "auth/notify.py",
+            "def notify(repo):\n    repo.delete(\"old\")",
+            "def notify(repo):\n    authorize()\n    repo.delete(\"old\")\n\n"
+            "def notify_bulk(repo):\n    repo.delete(\"new\")",
+        ),
+        setup=lambda r: (r / "auth/notify.py").write_text(
+            "def notify(repo):\n    repo.delete(\"old\")\n"
         ),
     ))
 

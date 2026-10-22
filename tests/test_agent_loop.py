@@ -100,8 +100,8 @@ def test_loop_exhausts_after_budget(tmp_path):
 def test_loop_indeterminate_when_final_result_is_unknown(tmp_path):
     root = _repo(tmp_path)
     agent = ScriptedAgent([
-        _change("ok\n", "UNKNOWN one\n"),
-        _change("ok\n", "UNKNOWN two\n"),
+        _change("ok\n", "x = 'UNKNOWN one'\n"),
+        _change("ok\n", "x = 'UNKNOWN two'\n"),
     ])
     result = FeedbackLoop(SemanticVerifier([MarkerRule()]), max_iterations=2).run(
         "task", root, agent

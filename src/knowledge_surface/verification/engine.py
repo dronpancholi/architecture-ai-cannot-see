@@ -21,7 +21,15 @@ from ..extractors.python_ast import PythonASTExtractor
 from ..paths import read_tree, safe_write
 from ..representation.knowledge_surface import KnowledgeSurface
 from .change import ChangeSet, parse_python
-from .rules import Allowlist, BehavioralRule, Outcome, Rule, RuleContext, RuleResult
+from .rules import (
+    Allowlist,
+    BehavioralRule,
+    Outcome,
+    Rule,
+    RuleContext,
+    RuleResult,
+    Violation,
+)
 from .sandbox import run_behavioral
 
 _POLICIES = {"block", "warn", "ignore"}
@@ -42,6 +50,7 @@ class Finding:
     confidence: str = "known"
     suppressed: bool = False
     suppression_reason: str = ""
+    key: str = ""                # stable semantic identity, no line number
 
     @property
     def introduced(self) -> bool:
@@ -50,6 +59,7 @@ class Finding:
     def to_dict(self) -> dict:
         return {
             "rule_id": self.rule_id,
+            "key": self.key,
             "path": self.path,
             "line": self.line,
             "message": self.message,
@@ -93,6 +103,8 @@ class VerificationReport:
         if self.approved:
             suffix = f", {len(self.preexisting)} pre-existing" if self.preexisting else ""
             return f"APPROVED ({self.rules_evaluated} rules{suffix})"
+        if self.blocking:
+            return f"BLOCKED: {len(self.blocking)} introduced violation(s)"
         if self.indeterminate and self.unknown_policy == "block":
             return (
                 f"INDETERMINATE: {len(self.unknown)} unknown result(s), "
@@ -140,14 +152,21 @@ def _parse_errors(tree: dict[str, str]) -> dict[str, str]:
     return errors
 
 
-def _finding(rule: Rule, result: RuleResult, status: str, before: str) -> Finding:
+def _finding(rule: Rule, result: RuleResult, status: str, before: str,
+             violation: Violation | None = None) -> Finding:
+    if violation is None:
+        violations = result.evidence_items()
+        violation = violations[0] if violations else Violation(
+            key=f"unknown::{rule.id}", path=result.path, line=result.line,
+        )
     return Finding(
         rule_id=result.rule_id or rule.id,
-        path=result.path,
-        line=result.line,
-        message=result.message,
-        evidence=result.evidence,
-        suggestion=result.suggestion,
+        key=violation.key,
+        path=violation.path or result.path,
+        line=violation.line or result.line,
+        message=violation.message or result.message,
+        evidence=violation.evidence or result.evidence,
+        suggestion=violation.suggestion or result.suggestion,
         severity=rule.severity,
         status=status,
         before=before,
@@ -157,7 +176,7 @@ def _finding(rule: Rule, result: RuleResult, status: str, before: str) -> Findin
 
 
 def _sort_key(f: Finding) -> tuple:
-    return (f.path, f.line, f.rule_id, f.status)
+    return (f.path, f.line, f.rule_id, f.status, f.key)
 
 
 class SemanticVerifier:
@@ -210,7 +229,15 @@ class SemanticVerifier:
         improvements: list[Finding] = []
         suppressed: list[Finding] = []
         rule_results: list[dict] = []
-        complete = validated.complete and not after_errors
+        introduced_errors = {
+            path for path in after_errors
+            if path in changed and before_errors.get(path) != after_errors[path]
+        }
+        # A changed file that no longer parses is an introduced defect. A
+        # pre-existing syntax error elsewhere is only a diagnostic; it makes a
+        # rule indeterminate when that file is inside the rule's scope (the
+        # rule itself reports UNKNOWN via relevant_error).
+        complete = validated.complete and not introduced_errors
 
         for rule in self.rules:
             before_result, after_result = self._evaluate(rule, ctx, baseline_ctx,
@@ -219,6 +246,8 @@ class SemanticVerifier:
                 "rule_id": rule.id,
                 "before": before_result.outcome.value,
                 "after": after_result.outcome.value,
+                "violations_before": len(before_result.evidence_items()),
+                "violations_after": len(after_result.evidence_items()),
                 "message": after_result.message if after_result.outcome is not Outcome.PASS else "",
                 "path": after_result.path,
                 "line": after_result.line,
@@ -226,11 +255,15 @@ class SemanticVerifier:
             self._classify(
                 rule, before_result, after_result,
                 findings, preexisting, unknown, improvements, suppressed,
+                validated,
             )
 
-        # Parse errors are first-class diagnostics, never silent.
+        # Parse errors are first-class diagnostics, never silent. Only a new
+        # error in a changed file is an introduced finding. Pre-existing
+        # errors outside a rule's scope do not block an unrelated change.
         for path, error in sorted(after_errors.items()):
-            status = "unknown" if path in changed else "preexisting"
+            introduced = path in introduced_errors
+            status = "introduced" if introduced else "preexisting"
             f = Finding(
                 rule_id="parse-error", path=path, line=0,
                 message=f"cannot parse candidate file: {error}",
@@ -238,10 +271,9 @@ class SemanticVerifier:
                 suggestion="Fix the syntax error or remove the file from the change.",
                 severity="error", status=status,
                 before=before_errors.get(path, ""), after=error,
-                confidence="unknown",
+                confidence="unknown", key=f"parse-error::{path}",
             )
             self._route(f, findings, preexisting, unknown, suppressed)
-            complete = False
 
         if not validated.complete:
             f = Finding(
@@ -250,9 +282,15 @@ class SemanticVerifier:
                 evidence="; ".join(validated.warnings),
                 suggestion="Verify binary changes outside the semantic verifier.",
                 severity="error", status="unknown", confidence="unknown",
+                key="unsupported-change",
             )
             self._route(f, findings, preexisting, unknown, suppressed)
             complete = False
+
+        if self.unknown_policy == "ignore":
+            # Explicitly discard indeterminate findings only after they have
+            # been classified; rule_results and parse_errors remain visible.
+            unknown = []
 
         findings.sort(key=_sort_key)
         preexisting.sort(key=_sort_key)
@@ -276,7 +314,7 @@ class SemanticVerifier:
             improvements=improvements,
             suppressed=suppressed,
             parse_errors=[
-                {"path": p, "error": e, "introduced": p in changed}
+                {"path": p, "error": e, "introduced": p in introduced_errors}
                 for p, e in sorted(after_errors.items())
             ],
             rule_results=rule_results,
@@ -303,14 +341,27 @@ class SemanticVerifier:
                 timeout=self.behavioral_timeout,
             )
             return (
-                RuleResult(rule.id, before.outcome, before.message,
-                           evidence=before.evidence),
-                RuleResult(rule.id, after.outcome, after.message,
-                           evidence=after.evidence),
+                self._behavior_result(rule, before),
+                self._behavior_result(rule, after),
             )
         before_result = self._safe_evaluate(rule, baseline_ctx)
         after_result = self._safe_evaluate(rule, ctx)
         return before_result, after_result
+
+    @staticmethod
+    def _behavior_result(rule: BehavioralRule, result) -> RuleResult:
+        violations = []
+        if result.outcome is Outcome.FAIL:
+            violations = [Violation(
+                key=f"behavior::{rule.id}",
+                message=result.message,
+                evidence=result.evidence,
+                suggestion="Make the behavioural check pass.",
+            )]
+        return RuleResult(
+            rule.id, result.outcome, result.message,
+            evidence=result.evidence, violations=violations,
+        )
 
     @staticmethod
     def _safe_evaluate(rule: Rule, ctx: RuleContext) -> RuleResult:
@@ -335,31 +386,81 @@ class SemanticVerifier:
         unknown: list[Finding],
         improvements: list[Finding],
         suppressed: list[Finding],
+        changes: ChangeSet,
     ) -> None:
+        """Compare independent violations, not just aggregate rule outcomes.
+
+        Identity is ``(canonical_path, semantic_key)``. A file rename maps the
+        after path back to the old path so an unchanged violation is not
+        misreported as introduced. A new key under a rule that was already
+        failing is still introduced and blocks.
+        """
         b = before.outcome
         a = after.outcome
+        rename = {
+            fc.path: fc.old_path
+            for fc in changes.files
+            if fc.old_path and fc.old_path != fc.path
+        }
+
+        def canonical(path: str) -> str:
+            return rename.get(path, path)
+
         if a is Outcome.PASS:
-            if b is not Outcome.PASS:
-                f = _finding(rule, after, "improvement", b.value)
-                improvements.append(f)
+            if b is Outcome.FAIL:
+                before_v = before.evidence_items()
+                for violation in before_v:
+                    improvements.append(
+                        _finding(rule, before, "improvement", b.value, violation)
+                    )
+                if not before_v:
+                    improvements.append(_finding(rule, before, "improvement", b.value))
+            elif b is Outcome.UNKNOWN:
+                improvements.append(_finding(rule, before, "improvement", b.value))
             return
+
         if a is Outcome.UNKNOWN:
             self._route(_finding(rule, after, "unknown", b.value),
                         findings, preexisting, unknown, suppressed)
             return
-        # a is FAIL. A target that was absent before and is still absent is
-        # pre-existing; adding a target that violates, or removing one that
-        # used to exist, is introduced.
-        if after.missing_target:
-            status = "preexisting" if before.missing_target and b is Outcome.FAIL else "introduced"
-        elif b is Outcome.PASS or before.missing_target:
-            status = "introduced"
-        elif b is Outcome.FAIL:
-            status = "preexisting"
-        else:
-            status = "unknown"
-        self._route(_finding(rule, after, status, b.value),
-                    findings, preexisting, unknown, suppressed)
+
+        after_v = after.evidence_items()
+        before_v = before.evidence_items() if b is Outcome.FAIL else []
+        before_keys = {(v.path, v.key) for v in before_v}
+        after_keys = {(canonical(v.path), v.key) for v in after_v}
+
+        if b is Outcome.PASS:
+            for violation in after_v:
+                self._route(
+                    _finding(rule, after, "introduced", b.value, violation),
+                    findings, preexisting, unknown, suppressed,
+                )
+            return
+
+        if b is Outcome.UNKNOWN:
+            for violation in after_v:
+                self._route(
+                    _finding(rule, after, "unknown", b.value, violation),
+                    findings, preexisting, unknown, suppressed,
+                )
+            return
+
+        # b is FAIL: match finding by finding.
+        for violation in after_v:
+            status = (
+                "preexisting"
+                if (canonical(violation.path), violation.key) in before_keys
+                else "introduced"
+            )
+            self._route(
+                _finding(rule, after, status, b.value, violation),
+                findings, preexisting, unknown, suppressed,
+            )
+        for violation in before_v:
+            if (violation.path, violation.key) not in after_keys:
+                improvements.append(
+                    _finding(rule, before, "improvement", b.value, violation)
+                )
 
     def _route(
         self,

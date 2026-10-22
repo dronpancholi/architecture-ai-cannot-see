@@ -4,10 +4,13 @@ This is an honest list of what is missing, ordered by evidence value rather than
 
 ## Next
 
-- **Live-model evaluation.** The loop is proven with a deterministic `ScriptedAgent`. Run a real model against the same 17 scenarios and record safe-change rate, iterations, token cost, and failure modes. Until then, no live-model claim is made.
-- **Dependency-audit gate.** Add `pip-audit` (or equivalent) to CI and document the policy for runtime dependencies.
+- **Live-model evaluation.** The loop is proven with a deterministic `ScriptedAgent`. Run a real model against the same 23 scenarios and record safe-change rate, iterations, token cost, and failure modes. Until then, no live-model claim is made.
 - **More external repositories.** The external benchmark pins two repositories and ten scenarios. Add projects with different shapes (Django, async services, data pipelines) and keep every target pinned by full SHA.
 - **Data-flow-aware rules.** The current structural rules reason over syntax and a conservative call graph. A rule that needs argument provenance should be able to say `UNKNOWN` with a reason instead of a heuristic guess.
+
+## Done
+
+- **Dependency-audit gate.** CI runs `pip-audit --skip-editable`; local 0.3.1 audit reported no known vulnerabilities. Advisory results remain point-in-time evidence.
 
 ## Later
 

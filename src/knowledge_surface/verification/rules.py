@@ -52,12 +52,19 @@ class RuleContext:
     def changed_python_paths(self) -> set[str]:
         return {p for p in self.changes.touched_paths() if p.endswith(".py")}
 
-    def relevant_error(self, pattern: re.Pattern[str] | None = None) -> str | None:
-        """First parse error in a *changed* file, optionally scoped by path."""
+    def relevant_error(self, pattern: re.Pattern[str] | None = None,
+                       paths: set[str] | None = None) -> str | None:
+        """First parse error that prevents evaluating *this rule's* scope.
+
+        A parse error in a file outside the rule's scope does not invalidate
+        the rule's evidence. Errors are not restricted to changed files: a
+        pre-existing syntax error inside the scope still means the rule cannot
+        see that file.
+        """
         for path, error in sorted(self.after_errors.items()):
-            if path not in self.changed_python_paths:
-                continue
             if pattern is not None and not pattern.search(path):
+                continue
+            if paths is not None and path not in paths:
                 continue
             return error
         return None
@@ -67,6 +74,24 @@ class RuleContext:
 
     def before_asts(self) -> dict[str, ast.Module]:
         return _parsed(self.before_tree)
+
+
+@dataclass(frozen=True)
+class Violation:
+    """One independently comparable rule violation.
+
+    ``key`` identifies the violated semantic target without a line number or
+    path, so an edit that only shifts lines does not create a new finding. The
+    engine combines it with the (rename-canonicalized) path.
+    """
+
+    key: str
+    path: str = ""
+    line: int = 0
+    message: str = ""
+    evidence: str = ""
+    suggestion: str = ""
+    missing_target: bool = False
 
 
 @dataclass
@@ -80,10 +105,24 @@ class RuleResult:
     evidence: str = ""
     suggestion: str = ""
     missing_target: bool = False
+    violations: list[Violation] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
         return self.outcome is Outcome.PASS
+
+    def evidence_items(self) -> list[Violation]:
+        """Every comparable violation, including a legacy single-result rule."""
+        if self.violations:
+            return list(self.violations)
+        if self.outcome is not Outcome.FAIL:
+            return []
+        key = "missing-target" if self.missing_target else f"legacy::{self.message}"
+        return [Violation(
+            key=key, path=self.path, line=self.line, message=self.message,
+            evidence=self.evidence, suggestion=self.suggestion,
+            missing_target=self.missing_target,
+        )]
 
     @classmethod
     def unknown(cls, rule_id: str, message: str, **kwargs) -> RuleResult:
@@ -152,15 +191,45 @@ def _funcs(tree: ast.Module) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
 
 
 def _iter_functions(tree: ast.Module):
-    """Yield ``(owner_class, function)`` pairs, including nested classes."""
-    stack: list[tuple[str, ast.AST]] = [("", tree)]
-    while stack:
-        owner, node = stack.pop()
+    """Yield ``(owner_class, function)`` for every function, including nested defs.
+
+    A nested function is evaluated as its own call scope; its calls are not
+    attributed to the enclosing function.
+    """
+
+    def walk(node: ast.AST, owner: str):
         for child in ast.iter_child_nodes(node):
             if isinstance(child, ast.ClassDef):
-                stack.append((child.name, child))
+                yield from walk(child, child.name)
             elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 yield owner, child
+                yield from walk(child, owner)
+            else:
+                yield from walk(child, owner)
+
+    yield from walk(tree, "")
+
+
+def _function_entries(tree: ast.Module):
+    """Yield ``(owner, function, occurrence)`` with a stable duplicate index.
+
+    ``occurrence`` disambiguates two same-name definitions in the same owner
+    scope without using the line number. Definitions are ordered by source
+    position; adding lines above them does not change the index.
+    """
+    entries = list(_iter_functions(tree))
+    entries.sort(key=lambda item: (item[1].lineno, item[0], item[1].name))
+    counts: dict[tuple[str, str], int] = {}
+    for owner, fn in entries:
+        bucket = (owner, fn.name)
+        occurrence = counts.get(bucket, 0)
+        counts[bucket] = occurrence + 1
+        yield owner, fn, occurrence
+
+
+def _function_key(owner: str, fn: ast.FunctionDef | ast.AsyncFunctionDef,
+                  occurrence: int) -> str:
+    return f"fn::{owner}::{fn.name}#{occurrence}"
 
 
 def _calls_in_own_scope(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> list[tuple[str, int, ast.Call]]:
@@ -254,29 +323,41 @@ class ForbiddenImportRule(Rule):
         self.forbidden = re.compile(forbidden)
         self.description = description or f"{source} must not import {forbidden}"
 
-    def _check(self, asts: dict[str, ast.Module]) -> tuple[bool, str, str, int]:
-        hits: list[str] = []
-        first_path, first_line = "", 0
+    def _check(self, asts: dict[str, ast.Module]) -> list[Violation]:
+        found: dict[tuple[str, str], Violation] = {}
         for path, tree in sorted(asts.items()):
             if not self.source.search(path):
                 continue
             for mod, line in _imports(tree):
-                if self.forbidden.search(mod):
-                    hits.append(f"{path}:{line} imports {mod}")
-                    if not first_path:
-                        first_path, first_line = path, line
-        return (not hits, "; ".join(hits), first_path, first_line)
+                if not self.forbidden.search(mod):
+                    continue
+                key = f"import::{mod}"
+                if (path, key) not in found:
+                    found[(path, key)] = Violation(
+                        key=key, path=path, line=line,
+                        message=self.description,
+                        evidence=f"{path}:{line} imports {mod}",
+                        suggestion=(
+                            "Remove the forbidden import or route through an "
+                            "allowed boundary."
+                        ),
+                    )
+        return list(found.values())
 
     def evaluate(self, ctx: RuleContext) -> RuleResult:
         error = ctx.relevant_error(self.source)
         if error:
             return RuleResult.unknown(self.id, f"cannot evaluate: {error}", evidence=error)
-        ok, ev, path, line = self._check(ctx.after_asts())
+        violations = self._check(ctx.after_asts())
+        if not violations:
+            return RuleResult(rule_id=self.id, outcome=Outcome.PASS,
+                              message="no forbidden import")
+        first = violations[0]
         return RuleResult(
-            rule_id=self.id, outcome=Outcome.PASS if ok else Outcome.FAIL,
-            message=self.description if not ok else "no forbidden import",
-            path=path, line=line, evidence=ev,
-            suggestion="Remove the forbidden import or route through an allowed boundary.",
+            rule_id=self.id, outcome=Outcome.FAIL, message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion, violations=violations,
         )
 
 
@@ -299,51 +380,78 @@ class RequireCallRule(Rule):
         self.required = required
         self.severity = "error"
 
-    def _check(self, asts: dict[str, ast.Module]) -> tuple[Outcome, str, str, int, bool]:
+    def _check(self, asts: dict[str, ast.Module]) -> tuple[list[Violation], bool]:
+        violations: list[Violation] = []
         checked = 0
         for path, tree in sorted(asts.items()):
-            for cls, fn in _iter_functions(tree):
+            for owner, fn, occurrence in _function_entries(tree):
                 if not self.function.search(fn.name):
                     continue
-                if self.owner is not None and not self.owner.search(cls):
+                if self.owner is not None and not self.owner.search(owner):
                     continue
                 checked += 1
+                key = _function_key(owner, fn, occurrence)
                 calls = _calls_in_own_scope(fn)
                 required = [c for c in calls if _matches(c[0], self.callee)]
                 if not required:
-                    return (Outcome.FAIL,
-                            f"{path}:{fn.lineno} {fn.name} does not call {self.callee}",
-                            path, fn.lineno, False)
+                    violations.append(Violation(
+                        key=f"require::{key}::{self.callee}",
+                        path=path, line=fn.lineno,
+                        message=f"{path}:{fn.lineno} {fn.name} does not call {self.callee}",
+                        evidence=f"{path}:{fn.lineno} {fn.name} does not call {self.callee}",
+                        suggestion=f"Call {self.callee} before the protected operation.",
+                    ))
+                    continue
                 if self.before_call:
                     protected = [c for c in calls if _matches(c[0], self.before_call)]
                     if protected:
                         first = min(protected, key=lambda c: (c[1], c[2].col_offset))
                         if not _dominates(fn, self.callee, first[2]):
-                            return (Outcome.FAIL,
+                            violations.append(Violation(
+                                key=f"require::{key}::{self.callee}",
+                                path=path, line=fn.lineno,
+                                message=(
                                     f"{path}:{fn.lineno} {self.callee} does not dominate "
-                                    f"{self.before_call}",
-                                    path, fn.lineno, False)
-        if checked == 0:
-            if self.required:
-                return (Outcome.FAIL,
-                        f"target function {self.function.pattern} not found",
-                        "", 0, True)
-            return (Outcome.PASS, "target absent (optional rule)", "", 0, False)
-        return (Outcome.PASS, "", "", 0, False)
+                                    f"{self.before_call}"
+                                ),
+                                evidence=(
+                                    f"{path}:{fn.lineno} {self.callee} does not dominate "
+                                    f"{self.before_call}"
+                                ),
+                                suggestion=(
+                                    f"Call {self.callee} before the protected operation."
+                                ),
+                            ))
+        if checked == 0 and self.required:
+            violations.append(Violation(
+                key="missing-target", path="", line=0,
+                message=f"target function {self.function.pattern} not found",
+                evidence=f"target function {self.function.pattern} not found",
+                suggestion="Add the function or set required=false for an optional rule.",
+                missing_target=True,
+            ))
+        return violations, checked == 0
 
     def evaluate(self, ctx: RuleContext) -> RuleResult:
         error = ctx.relevant_error()
         if error:
             return RuleResult.unknown(self.id, f"cannot evaluate: {error}", evidence=error)
-        outcome, ev, path, line, missing = self._check(ctx.after_asts())
-        if outcome is Outcome.UNKNOWN:
-            return RuleResult.unknown(self.id, ev or "indeterminate", path=path, line=line, evidence=ev)
+        violations, missing = self._check(ctx.after_asts())
+        if not violations:
+            return RuleResult(
+                rule_id=self.id, outcome=Outcome.PASS,
+                message="target absent (optional rule)" if missing else "required call present",
+                missing_target=missing,
+            )
+        first = violations[0]
         return RuleResult(
-            rule_id=self.id, outcome=outcome,
-            message=(ev or self.description) if outcome is Outcome.FAIL else "required call present",
-            path=path, line=line, evidence=ev,
-            suggestion=f"Call {self.callee} before the protected operation.",
+            rule_id=self.id, outcome=Outcome.FAIL,
+            message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion,
             missing_target=missing,
+            violations=violations,
         )
 
 
@@ -358,28 +466,42 @@ class ForbiddenCallRule(Rule):
         error = ctx.relevant_error(self.scope)
         if error:
             return RuleResult.unknown(self.id, f"cannot evaluate: {error}", evidence=error)
+        found: dict[tuple[str, str], Violation] = {}
         for path, tree in sorted(ctx.after_asts().items()):
             if not self.scope.search(path):
                 continue
-            for fn in _funcs(tree):
+            for owner, fn, occurrence in _function_entries(tree):
                 for name, line, _ in _calls_in_own_scope(fn):
-                    if _matches(name, self.callee):
-                        return RuleResult(
-                            rule_id=self.id, outcome=Outcome.FAIL,
-                            message=f"{fn.name} calls forbidden {self.callee}",
-                            path=path, line=line, evidence=f"{path}:{line} calls {name}",
-                            suggestion=f"Remove the call to {self.callee}.",
-                        )
+                    if not _matches(name, self.callee):
+                        continue
+                    key = f"call::{_function_key(owner, fn, occurrence)}::{self.callee}"
+                    found.setdefault((path, key), Violation(
+                        key=key, path=path, line=line,
+                        message=f"{fn.name} calls forbidden {self.callee}",
+                        evidence=f"{path}:{line} calls {name}",
+                        suggestion=f"Remove the call to {self.callee}.",
+                    ))
             # Calls outside a function (module level).
             for name, line, _ in _module_level_calls(tree):
-                if _matches(name, self.callee):
-                    return RuleResult(
-                        rule_id=self.id, outcome=Outcome.FAIL,
-                        message=f"module calls forbidden {self.callee}",
-                        path=path, line=line, evidence=f"{path}:{line} calls {name}",
-                        suggestion=f"Remove the call to {self.callee}.",
-                    )
-        return RuleResult(rule_id=self.id, outcome=Outcome.PASS, message="ok")
+                if not _matches(name, self.callee):
+                    continue
+                key = f"call::module::{self.callee}"
+                found.setdefault((path, key), Violation(
+                    key=key, path=path, line=line,
+                    message=f"module calls forbidden {self.callee}",
+                    evidence=f"{path}:{line} calls {name}",
+                    suggestion=f"Remove the call to {self.callee}.",
+                ))
+        if not found:
+            return RuleResult(rule_id=self.id, outcome=Outcome.PASS, message="ok")
+        violations = list(found.values())
+        first = violations[0]
+        return RuleResult(
+            rule_id=self.id, outcome=Outcome.FAIL, message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion, violations=violations,
+        )
 
 
 def _module_level_calls(tree: ast.Module) -> list[tuple[str, int, ast.Call]]:
@@ -413,30 +535,42 @@ class NoOrphanedCallsRule(Rule):
         if not deleted:
             return RuleResult(rule_id=self.id, outcome=Outcome.PASS,
                               message="no deleted functions")
+        found: dict[tuple[str, str], Violation] = {}
         for path, tree in sorted(ctx.after_asts().items()):
-            for fn in _funcs(tree):
+            for owner, fn, occurrence in _function_entries(tree):
                 for name, line, _ in _calls_in_own_scope(fn):
                     leaf = name.split(".")[-1]
-                    if leaf in deleted:
-                        return RuleResult(
-                            rule_id=self.id, outcome=Outcome.FAIL,
-                            message=f"{fn.name} still calls deleted function {leaf}",
-                            path=path, line=line,
-                            evidence=f"{path}:{line} calls {name}",
-                            suggestion=f"Update {path}:{line} or keep {leaf}.",
-                        )
-            for name, line, _ in _module_level_calls(tree):
-                leaf = name.split(".")[-1]
-                if leaf in deleted:
-                    return RuleResult(
-                        rule_id=self.id, outcome=Outcome.FAIL,
-                        message=f"module still calls deleted function {leaf}",
-                        path=path, line=line,
+                    if leaf not in deleted:
+                        continue
+                    key = f"orphan::{_function_key(owner, fn, occurrence)}::{leaf}"
+                    found.setdefault((path, key), Violation(
+                        key=key, path=path, line=line,
+                        message=f"{fn.name} still calls deleted function {leaf}",
                         evidence=f"{path}:{line} calls {name}",
                         suggestion=f"Update {path}:{line} or keep {leaf}.",
-                    )
-        return RuleResult(rule_id=self.id, outcome=Outcome.PASS,
-                          message="no orphaned callers")
+                    ))
+            for name, line, _ in _module_level_calls(tree):
+                leaf = name.split(".")[-1]
+                if leaf not in deleted:
+                    continue
+                key = f"orphan::module::{leaf}"
+                found.setdefault((path, key), Violation(
+                    key=key, path=path, line=line,
+                    message=f"module still calls deleted function {leaf}",
+                    evidence=f"{path}:{line} calls {name}",
+                    suggestion=f"Update {path}:{line} or keep {leaf}.",
+                ))
+        if not found:
+            return RuleResult(rule_id=self.id, outcome=Outcome.PASS,
+                              message="no orphaned callers")
+        violations = list(found.values())
+        first = violations[0]
+        return RuleResult(
+            rule_id=self.id, outcome=Outcome.FAIL, message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion, violations=violations,
+        )
 
 
 class TypeAnnotationRule(Rule):
@@ -447,27 +581,43 @@ class TypeAnnotationRule(Rule):
         self.skip_private = skip_private
         self.description = "public functions must be fully annotated"
 
-    def _check(self, asts: dict[str, ast.Module]) -> tuple[bool, str, str, int]:
+    def _check(self, asts: dict[str, ast.Module]) -> list[Violation]:
+        found: list[Violation] = []
         for path, tree in sorted(asts.items()):
-            for fn in _funcs(tree):
+            for owner, fn, occurrence in _function_entries(tree):
                 if self.skip_private and fn.name.startswith("_"):
                     continue
                 args = fn.args.posonlyargs + fn.args.args + fn.args.kwonlyargs
-                missing = [a.arg for a in args if a.annotation is None and a.arg not in ("self", "cls")]
+                missing = [
+                    a.arg for a in args
+                    if a.annotation is None and a.arg not in ("self", "cls")
+                ]
                 if fn.returns is None or missing:
-                    return (False, f"{path}:{fn.lineno} {fn.name} missing annotations", path, fn.lineno)
-        return (True, "", "", 0)
+                    found.append(Violation(
+                        key=f"annotation::{_function_key(owner, fn, occurrence)}",
+                        path=path, line=fn.lineno,
+                        message=f"{path}:{fn.lineno} {fn.name} missing annotations",
+                        evidence=(
+                            f"{path}:{fn.lineno} {fn.name} missing return={fn.returns is None} "
+                            f"args={missing}"
+                        ),
+                        suggestion="Add parameter and return type annotations.",
+                    ))
+        return found
 
     def evaluate(self, ctx: RuleContext) -> RuleResult:
         error = ctx.relevant_error()
         if error:
             return RuleResult.unknown(self.id, f"cannot evaluate: {error}", evidence=error)
-        ok, ev, path, line = self._check(ctx.after_asts())
+        violations = self._check(ctx.after_asts())
+        if not violations:
+            return RuleResult(rule_id=self.id, outcome=Outcome.PASS, message="annotated")
+        first = violations[0]
         return RuleResult(
-            rule_id=self.id, outcome=Outcome.PASS if ok else Outcome.FAIL,
-            message=self.description if not ok else "annotated",
-            path=path, line=line, evidence=ev,
-            suggestion="Add parameter and return type annotations.",
+            rule_id=self.id, outcome=Outcome.FAIL, message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion, violations=violations,
         )
 
 
@@ -476,25 +626,64 @@ class NoMutableDefaultRule(Rule):
         self.id = id
         self.description = "functions must not use mutable default arguments"
 
-    def _check(self, asts: dict[str, ast.Module]) -> tuple[bool, str, str, int]:
+    def _check(self, asts: dict[str, ast.Module]) -> list[Violation]:
+        found: list[Violation] = []
         for path, tree in sorted(asts.items()):
-            for fn in _funcs(tree):
-                defaults = list(fn.args.defaults) + [d for d in fn.args.kw_defaults if d is not None]
-                for default in defaults:
-                    if isinstance(default, (ast.List, ast.Dict, ast.Set)):
-                        return (False, f"{path}:{fn.lineno} {fn.name} mutable default", path, fn.lineno)
-        return (True, "", "", 0)
+            for owner, fn, occurrence in _function_entries(tree):
+                key = _function_key(owner, fn, occurrence)
+                positional = fn.args.posonlyargs + fn.args.args
+                offset = len(positional) - len(fn.args.defaults)
+                for index, default in enumerate(fn.args.defaults):
+                    if not isinstance(default, (ast.List, ast.Dict, ast.Set)):
+                        continue
+                    name = (
+                        positional[offset + index].arg
+                        if 0 <= offset + index < len(positional)
+                        else f"arg{index}"
+                    )
+                    found.append(Violation(
+                        key=f"mutable::{key}::{name}",
+                        path=path, line=fn.lineno,
+                        message=f"{path}:{fn.lineno} {fn.name} mutable default for {name}",
+                        evidence=f"{path}:{fn.lineno} {fn.name}({name}=...)",
+                        suggestion=(
+                            "Use None as the default and create the container inside "
+                            "the function."
+                        ),
+                    ))
+                for index, default in enumerate(fn.args.kw_defaults):
+                    if default is None or not isinstance(default, (ast.List, ast.Dict, ast.Set)):
+                        continue
+                    name = (
+                        fn.args.kwonlyargs[index].arg
+                        if index < len(fn.args.kwonlyargs)
+                        else f"kwarg{index}"
+                    )
+                    found.append(Violation(
+                        key=f"mutable::{key}::{name}",
+                        path=path, line=fn.lineno,
+                        message=f"{path}:{fn.lineno} {fn.name} mutable default for {name}",
+                        evidence=f"{path}:{fn.lineno} {fn.name}({name}=...)",
+                        suggestion=(
+                            "Use None as the default and create the container inside "
+                            "the function."
+                        ),
+                    ))
+        return found
 
     def evaluate(self, ctx: RuleContext) -> RuleResult:
         error = ctx.relevant_error()
         if error:
             return RuleResult.unknown(self.id, f"cannot evaluate: {error}", evidence=error)
-        ok, ev, path, line = self._check(ctx.after_asts())
+        violations = self._check(ctx.after_asts())
+        if not violations:
+            return RuleResult(rule_id=self.id, outcome=Outcome.PASS, message="ok")
+        first = violations[0]
         return RuleResult(
-            rule_id=self.id, outcome=Outcome.PASS if ok else Outcome.FAIL,
-            message=self.description if not ok else "ok",
-            path=path, line=line, evidence=ev,
-            suggestion="Use None as the default and create the container inside the function.",
+            rule_id=self.id, outcome=Outcome.FAIL, message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion, violations=violations,
         )
 
 
@@ -511,9 +700,10 @@ class RequiredDecoratorRule(Rule):
         error = ctx.relevant_error()
         if error:
             return RuleResult.unknown(self.id, f"cannot evaluate: {error}", evidence=error)
+        violations: list[Violation] = []
         checked = 0
         for path, tree in sorted(ctx.after_asts().items()):
-            for fn in _funcs(tree):
+            for owner, fn, occurrence in _function_entries(tree):
                 if not self.function.search(fn.name):
                     continue
                 checked += 1
@@ -525,22 +715,34 @@ class RequiredDecoratorRule(Rule):
                         decos.append(deco.id)
                     elif isinstance(deco, ast.Attribute):
                         decos.append(deco.attr)
-                if not any(_matches(d, self.decorator) for d in decos):
-                    return RuleResult(
-                        rule_id=self.id, outcome=Outcome.FAIL,
-                        message=f"{fn.name} missing @{self.decorator}",
-                        path=path, line=fn.lineno,
-                        evidence=f"{path}:{fn.lineno} decorators={decos}",
-                        suggestion=f"Add @{self.decorator} to {fn.name}.",
-                    )
+                if any(_matches(d, self.decorator) for d in decos):
+                    continue
+                violations.append(Violation(
+                    key=f"decorator::{_function_key(owner, fn, occurrence)}::{self.decorator}",
+                    path=path, line=fn.lineno,
+                    message=f"{fn.name} missing @{self.decorator}",
+                    evidence=f"{path}:{fn.lineno} decorators={decos}",
+                    suggestion=f"Add @{self.decorator} to {fn.name}.",
+                ))
         if checked == 0 and self.required:
-            return RuleResult(
-                rule_id=self.id, outcome=Outcome.FAIL,
+            violations.append(Violation(
+                key="missing-target", path="", line=0,
                 message=f"target function {self.function.pattern} not found",
+                evidence=f"target function {self.function.pattern} not found",
                 suggestion="Add the function or set required=false for an optional rule.",
                 missing_target=True,
-            )
-        return RuleResult(rule_id=self.id, outcome=Outcome.PASS, message="ok")
+            ))
+        if not violations:
+            return RuleResult(rule_id=self.id, outcome=Outcome.PASS, message="ok")
+        first = violations[0]
+        return RuleResult(
+            rule_id=self.id, outcome=Outcome.FAIL, message=first.message,
+            path=first.path, line=first.line,
+            evidence="; ".join(v.evidence for v in violations),
+            suggestion=first.suggestion,
+            missing_target=any(v.missing_target for v in violations),
+            violations=violations,
+        )
 
 
 class CustomRule(Rule):

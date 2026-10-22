@@ -26,15 +26,17 @@ Each scenario is labelled by construction:
 - `safe-refactor` — the change preserves all invariants (must allow).
 - `preexisting-debt` — the violation existed before the change (must not block).
 
+The suite includes old-debt-plus-new-violation cases, a file rename that preserves debt, and a scoped rule with an unrelated pre-existing parse error. A new parse error in a changed file is covered by tests rather than this score, because it is deliberately incomplete/blocking.
+
 The label is the ground truth. The verifier never grades itself.
 
 ## Targets
 
 | Benchmark | Target | Scenarios |
 |---|---|---|
-| `runner.py` | 4 realistic multi-module fixtures | 17 |
+| `runner.py` | 4 realistic multi-module fixtures | 23 |
 | `external.py` | `pallets/itsdangerous`, `psf/requests` (pinned) | 10 |
-| `agent_experiment.py` | same 17 scenarios, baseline vs loop | 17 |
+| `agent_experiment.py` | same 23 scenarios, baseline vs loop | 23 |
 | `perf.py` | project source + layered fixture (single host) | n/a |
 
 ## Honest limits

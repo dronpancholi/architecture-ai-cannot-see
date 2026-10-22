@@ -7,10 +7,10 @@ a scenario labelled *allow* is a safe refactor or pre-existing debt.
 
 | Metric | Value |
 |---|---|
-| Scenarios | 17 |
-| True positives | 11 |
+| Scenarios | 23 |
+| True positives | 15 |
 | False positives | 0 |
-| True negatives | 6 |
+| True negatives | 8 |
 | False negatives | 0 |
 | Precision | 100.00% |
 | Recall | 100.00% |
@@ -30,6 +30,12 @@ a scenario labelled *allow* is a safe refactor or pre-existing debt.
 | `layer-safe-add-method` | safe-refactor | allow | allow | ✅ |
 | `layer-orphaned-calls` | introduced-violation | block | block | ✅ |
 | `layer-preexisting-debt` | preexisting-debt | allow | allow | ✅ |
+| `layer-existing-plus-new-import-same-file` | introduced-violation | block | block | ✅ |
+| `layer-existing-plus-new-import-other-file` | introduced-violation | block | block | ✅ |
+| `layer-rename-preexisting-debt` | safe-refactor | allow | allow | ✅ |
+| `layer-preexisting-parse-error-unrelated` | safe-refactor | allow | allow | ✅ |
+| `auth-existing-plus-new-failing-function` | introduced-violation | block | block | ✅ |
+| `auth-repaired-old-plus-new-failing-function` | introduced-violation | block | block | ✅ |
 | `auth-missing-authorize-delete` | introduced-violation | block | block | ✅ |
 | `auth-missing-authorize-transfer` | introduced-violation | block | block | ✅ |
 | `auth-safe-logging` | safe-refactor | allow | allow | ✅ |
