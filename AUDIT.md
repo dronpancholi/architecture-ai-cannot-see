@@ -3,7 +3,8 @@
 Date: 2026-10-22
 Baseline commit: `5adfea4`
 0.3.0 implementation commit: `c4c0e26`
-0.3.1 follow-up base: `20a3251f86b51ade38a9690b7b97bd7ea6716785` (changes committed after this audit)
+0.3.1 follow-up base: `20a3251f86b51ade38a9690b7b97bd7ea6716785`
+0.3.1 implementation commit: `b1700c6ea595b51c77b96023ea8ec7db2a538d89`
 Repository: https://github.com/dronpancholi/architecture-ai-cannot-see
 Branch: `main`
 Baseline tests: 36 passed; working tree clean at audit start.
@@ -96,7 +97,7 @@ New test files and what they cover:
 | `test_cli.py` | exit codes 0/1/2/3, per-finding JSON, malformed inputs, unsupported files, drift gate |
 | `test_benchmark_pins.py` | exact checkout, HEAD verification, anchor failure, target selection |
 
-Remote CI (GitHub Actions run `39786564650`) passed on Python 3.11, 3.12, and 3.13 before the follow-up. That run does not cover the 0.3.1 changes; the new run is recorded after push. CLI coverage is 95%.
+Remote CI (GitHub Actions run `39794512119`, commit `b1700c6`) passed the three test jobs on Python 3.11, 3.12, and 3.13, plus the `dependency audit` job. The earlier run `39786564650` covers 0.3.0 only. CLI coverage is 95%.
 
 ## 4. Security report
 
@@ -172,7 +173,7 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 ## 8. Remaining gaps
 
 1. No live-LLM evaluation. The loop is proven only with a deterministic `ScriptedAgent`.
-2. The scheduled external workflow has not been run remotely; the local pinned run passed. The controlled CI workflow passed before the follow-up; the 0.3.1 run is recorded after push.
+2. The scheduled external workflow has not been run remotely; the local pinned run passed. The controlled CI workflow for `b1700c6` passed as run `39794512119`.
 3. External evidence is 10 scenarios over 2 repositories.
 4. Behavioural rules are not a security sandbox.
 5. Python is the only supported language.
@@ -187,7 +188,7 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 | A. Source integrity | **Pass** | Baseline `5adfea4` recorded; working tree inspected before edits; no history rewrite or force push; `git diff --check` clean; no unrelated deletion. |
 | B. Security | **Pass with residual risk** | Path containment tests, patch base requirement, sandbox controls, untrusted refusal, `SECURITY.md`; residual risk documented in §4. |
 | C. Verification correctness | **Pass** | 193 tests; per-finding old+new regressions; controlled 0 FP/FN; external 0 FP/FN with exact pins. |
-| D. Reproducibility | **Pass, with pending remote confirmation** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; prior GitHub Actions CI passed on 3.11, 3.12, and 3.13 (run `39786564650`), and a fresh 0.3.1 run is recorded after push. |
+| D. Reproducibility | **Pass** | Deterministic extraction/serialization; exact SHA pins + HEAD verification; wheel build/install smoke test; GitHub Actions CI run `39794512119` passed on 3.11, 3.12, and 3.13 plus the dependency audit. |
 | E. Evidence | **Pass, bounded** | `RESULTS.md`, `EXTERNAL.md`, `EVIDENCE.md`, `perf.json`, `docs/CLAIMS.md`; scope caveats stated. |
 | F. Hygiene | **Pass** | `ruff check .` clean; 89.95% coverage (gate 85%); `pip-audit` clean; `python -m build` produced 0.3.1 sdist/wheel; wheel installed in a fresh venv and `ks --help` ran. |
 | G. Documentation | **Pass** | README, architecture, verification, claims matrix, security, contributing, changelog, roadmap, templates aligned with implementation. |
@@ -199,7 +200,7 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 |---|---|---|
 | Verification correctness | 9.5/10 | Complete per-finding matrix, strict patches, conservative rules, 193 tests |
 | Security | 8.5/10 | Strong path/patch controls; dependency audit in CI; process isolation is explicitly not a sandbox |
-| Reproducibility | 9/10 | Exact pins, HEAD verification, deterministic output, wheel smoke test; fresh remote CI pending |
+| Reproducibility | 9/10 | Exact pins, HEAD verification, deterministic output, wheel smoke test, verified 0.3.1 remote CI |
 | Evidence quality | 8.5/10 | 23 controlled + 10 external + agent + performance evidence; small external sample |
 | Test depth | 9/10 | 89.95% coverage; CLI at 95%; per-finding regressions |
 | Documentation / maintainability | 9/10 | Claims matrix, limits, templates, changelog, roadmap |
@@ -220,5 +221,5 @@ Cold full build: 459.11 ms, 9.34 MB peak (`tracemalloc`), 29 files, 423 entities
 .venv/bin/python -m build                                   # 0.3.1 sdist + wheel
 # fresh venv: pip install dist/*.whl && ks --help             # passed
 # GitHub Actions: CI run 39786564650                            # prior run, 3.11/3.12/3.13
-# 0.3.1 remote run: recorded after push
+# 0.3.1 remote run: 39794512119 (3.11/3.12/3.13 + audit passed)
 ```
