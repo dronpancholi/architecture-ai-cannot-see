@@ -19,7 +19,7 @@ Maps each section of `WHITEPAPER.md` ("The Architecture AI Cannot See") to code,
 | Defect | Response | Evidence |
 |---|---|---|
 | 1. Real semantic verification | Rules evaluate before/after trees; `BehavioralRule` executes assertions | `verification/engine.py`, `tests/test_verification.py` |
-| 2. A real benchmark | 16 labelled scenarios + external pinned repo | `benchmarks/RESULTS.md`, `benchmarks/EXTERNAL.md` |
+| 2. A real benchmark | 17 labelled scenarios + external pinned repo | `benchmarks/RESULTS.md`, `benchmarks/EXTERNAL.md` |
 | 3. False-positive control | Regression-only blocking + allowlist; pre-existing debt never blocks | `tests/test_verification.py::test_preexisting_debt_not_blocking` |
 | 4. Deeper code understanding | Call graph, dynamic imports, framework decorators, owner-scoped functions | `extractors/deep.py`, `tests/test_deep_extractors.py` |
 | 5. Complete agent loop | `FeedbackLoop` with actionable feedback and revision | `agent/loop.py`, `tests/test_agent_and_benchmark.py` |
