@@ -25,6 +25,7 @@
 
 **Domain** · Software Engineering · AI Systems · Program Comprehension  
 **Audience** · Principal Engineers · Architects · Engineering Leaders · Researchers  
+**Author** · Dron Pancholi  
 **Version** · 1.1 · October 2026
 
 &nbsp;
@@ -32,6 +33,25 @@
 [Whitepaper](./WHITEPAPER.md) · [PDF](./docs/whitepaper.pdf) · [Verification](./docs/VERIFICATION.md) · [Architecture](./docs/ARCHITECTURE.md) · [Whitepaper → Code](./docs/WHITEPAPER_MAP.md) · [Benchmark](./benchmarks/RESULTS.md) · [Evidence](./benchmarks/EVIDENCE.md)
 
 </div>
+
+---
+
+## Try it in 60 seconds
+
+An AI agent adds `from app.db import Database` to a route. Every test still passes — the change is locally correct and architecturally wrong. This verifier catches it, and lets a safe refactor through.
+
+```bash
+pip install -e .
+ks verify benchmarks/fixtures/layered_webapp \
+  --patch examples/bad.patch --rules examples/ks-rules.json
+# BLOCKED: 2 introduced violation(s) — routes must not import the database layer directly
+
+ks verify benchmarks/fixtures/layered_webapp \
+  --patch examples/good.patch --rules examples/ks-rules.json
+# APPROVED (1 rules)
+```
+
+**The headline result:** without the loop, only 8/23 agent changes were actually safe (35%). With verification + feedback, 23/23 were safe and 0 unsafe changes were committed — at ~30 ms overhead. Full evidence: [benchmarks/EVIDENCE.md](./benchmarks/EVIDENCE.md).
 
 ---
 
@@ -481,7 +501,7 @@ The whitepaper is explicit that this problem is unsolved. So is this implementat
 @techreport{architecture-ai-cannot-see-2026,
   title  = {The Architecture AI Cannot See: Why AI coding agents read your
             software but do not understand it, and what a correct solution requires},
-  author = {Unknown},
+  author = {Dron Pancholi},
   year   = {2026},
   month  = {July},
   note   = {Version 1.0. Public.}
